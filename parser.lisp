@@ -105,10 +105,6 @@
        (declare (ignorable ,var))
        ,(rec bindings))))
 
-;;;; Primitives
-
-;;; Combinators
-
 (defun parser-return (x)
   (lambda (stream)
     (values x stream)))
@@ -155,22 +151,6 @@
                    acc))))
       (nreverse (rec stream nil)))))
 
-(defun parser-many (parser)
-  (lambda (stream)
-    (labels ((rec (result)
-               (let ((previous (file-position stream)))
-                 (handler-case
-                     (let ((r (funcall parser stream)))
-                       (rec (cons r result)))
-                   (not-expected (c)
-                     (declare (ignore c))
-                     (file-position stream previous)
-                     result)
-                   (end-of-stream (c)
-                     (declare (ignore c))
-                     result)))))
-      (nreverse (rec nil)))))
-
 (defun parser-many1 (parser)
   (parser-seq parser (parser-many parser)))
 
@@ -203,20 +183,6 @@
                         (parser-stream-cdr s))
                       string
                       :initial-value stream)))))
-
-#+(or)
-(defun specific-string (string)
-  (lambda (stream)
-    (let ((length (length string)))
-      (labels ((rec (stream n)
-                 (cond ((>= n length)
-                        (values string stream))
-                       ((not stream)
-                        (error 'end-of-stream :stream stream))
-                       (t
-                        (funcall (specific-char (aref string n)) stream)
-                        (rec (parser-stream-cdr stream) (1+ n))))))
-        (rec stream 0)))))
 
 (defun any-char ()
   (satisfy (constantly t)))
@@ -289,6 +255,7 @@
                  nil)))
     `(parser-seq ,(expand exp))))
 
+#+(or)
 (defun f (stream)
   (funcall (parser (:/ (:> (:f char-parser #\{)
                            (:/ (:+ not-brace) {x})
@@ -296,21 +263,6 @@
                            {x})
                        empty))
            stream))
-
-(defun {x} (stream)
-  (funcall
-   (parser-or
-    (parser-cont
-     (char-parser #\{)
-     (parser-or
-      (parser-many1 #'not-brace)
-      #'{x})
-     (char-parser #\})
-     #'{x})
-    #'empty)
-   stream))
-
-(parse #'f "{{abc}{123}}rest...")
 
 (defpackage :parser.test (:use :parser :cl :5am))
 (in-package :parser.test)
