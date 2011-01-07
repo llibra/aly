@@ -107,15 +107,6 @@
 
 ;;;; Primitives
 
-(defun make-parser (pred)
-  (lambda (stream)
-    (unless stream
-      (error 'end-of-stream :stream stream))
-    (let ((datum (parser-stream-car stream)))
-      (if (funcall pred datum)
-          (values datum (parser-stream-cdr stream))
-          (error 'unexpected-datum :stream stream :datum datum)))))
-    
 ;;; Combinators
 
 (defun parser-return (x)
