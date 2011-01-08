@@ -8,14 +8,28 @@
            :parser-stream-cdr
 
            :parser-error
+           :simple-parser-error
            :unexpected-datum
            :end-of-stream
 
-           :parser-or
-           :parser-try
+           :with-no-consumption/failure
+           :with-context
+           :with-expected-label
+           
+           :return-result
+           :sequence
+           :choice
+           :fail
+           :try
+           :unexpected
+
+           :many
+           :many1
 
            :parse
 
+           ;:one-of
+           ;:none-of
            :satisfy
            :specific-char
            :specific-string
@@ -36,10 +50,10 @@
 
 ;;;; Stream
 
-;; Lazy parser stream is based on the idea from PEG module of Gauche.
-;;
-;; <parser-stream> : nil | (<token> . <stream-or-generator>) 
-;; <stream-or-generator> : <parser-stream> | <generator>
+;;; Lazy parser stream is based on the idea from PEG module of Gauche.
+;;;
+;;; <parser-stream> : nil | (<token> . <stream-or-generator>) 
+;;; <stream-or-generator> : <parser-stream> | <generator>
 
 (defun make-parser-stream (generator)
   (cons (funcall generator) generator))
@@ -70,11 +84,34 @@
 (define-condition parser-error (error)
   ((stream :initarg :stream :accessor parser-error-stream)))
 
-(define-condition unexpected-datum (parser-error)
-  ((datum :initarg :datum :reader unexpected-datum-datum))
+(define-condition simple-parser-error (parser-error)
+  ((control :initarg :control :reader simple-parser-error-control)
+   (arguments :initarg :arguments :reader simple-parser-error-arguments))
   (:report (lambda (c s)
-             (format s "~S is unexpected datum."
-                     (unexpected-datum-datum c)))))
+             (apply #'format s
+                    (simple-parser-error-control c)
+                    (simple-parser-error-arguments c)))))
+
+(define-condition unexpected-datum (parser-error)
+  ((expected :initform nil
+             :initarg :expected
+             :accessor unexpected-datum-expected)
+   (unexpected :initform nil
+               :initarg :unexpected
+               :accessor unexpected-datum-unexpected)
+   (datum :initform nil
+          :initarg :datum
+          :reader unexpected-datum-datum))
+  (:report (lambda (c s)
+             (assert (not (and (unexpected-datum-expected c)
+                               (unexpected-datum-unexpected c))))
+             (if (unexpected-datum-expected c)
+                 (format s "Parser is expecting ~S, but got ~S."
+                         (unexpected-datum-expected c)
+                         (unexpected-datum-datum c))
+                 (format s "Parser is not expecting ~S, but got ~S."
+                         (unexpected-datum-unexpected c)
+                         (unexpected-datum-datum c))))))
 
 (define-condition end-of-stream (parser-error)
   ()
@@ -82,10 +119,15 @@
              (format s "Parser encountered end of stream on ~S."
                      (parser-error-stream c)))))
 
+(defun parser-error (stream condition &rest arguments)
+  (if (stringp condition)
+      (error 'simple-parser-error
+             :stream stream :control condition :arguments arguments)
+      (apply #'error condition :stream stream arguments)))
+
 ;;;; Macros
 
-;;; TODO: once-only stream
-(defmacro with-no-consumption/error ((stream) &body body)
+(defmacro with-no-consumption/failure ((stream) &body body)
   (with-gensyms (condition)
     `(handler-case
          (progn ,@body)
@@ -105,54 +147,74 @@
        (declare (ignorable ,var))
        ,(rec bindings))))
 
-(defun parser-return (x)
+(defmacro with-expected-label ((label) &body body)
+  (with-gensyms (condition)
+    `(handler-case (progn ,@body)
+       (unexpected-datum (,condition)
+         (setf (unexpected-datum-unexpected ,condition) nil)
+         (setf (unexpected-datum-expected ,condition) ,label)
+         (error ,condition)))))
+
+;;;; Primitives
+
+(defun return-result (x)
   (lambda (stream)
     (values x stream)))
 
-;; TODO: think about (null parsers) case
-(defmacro parser-or (&rest parsers)
-  (with-gensyms (stream condition)
-    (labels ((rec (rest)
-               (if rest
-                   `(handler-case (funcall ,(car rest) ,stream)
-                      ((or unexpected-datum end-of-stream) (,condition)
-                        (if (eq ,stream (parser-error-stream ,condition))
-                            ,(rec (cdr rest))
-                            (error ,condition))))
-                   `(error ,condition))))
-      (if parsers
-          `(lambda (,stream) ,(rec parsers))
-          `(lambda (,stream) (values nil ,stream))))))
-
-(defun parser-try (parser)
+(defun sequence (&rest parsers)
   (lambda (stream)
-    (with-no-consumption/error (stream)
+    (labels ((rec (rest stream)
+               (if (cdr rest)
+                   (multiple-value-bind (_ next-stream)
+                       (funcall (car rest) stream)
+                     (declare (ignore _))
+                     (rec (cdr rest) next-stream))
+                   (funcall (car rest) stream))))
+      (if parsers
+          (rec parsers stream)
+          (funcall (fail) stream)))))
+
+(defun choice (&rest parsers)
+  (lambda (stream)
+    (labels ((rec (rest stream)
+               (if rest
+                   (handler-case (funcall (car rest) stream)
+                     (parser-error (c)
+                       (if (eq stream (parser-error-stream c))
+                           (rec (cdr rest) stream)
+                           (error c))))
+                   (funcall (fail) stream))))
+      (rec parsers stream))))
+
+(defun fail (&optional (ctrl "Parser failed.") &rest args)
+  (lambda (stream)
+    (apply #'parser-error stream ctrl args)))
+
+(defun try (parser)
+  (lambda (stream)
+    (with-no-consumption/failure (stream)
       (funcall parser stream))))
 
-(defun parser-with-error-message
-
-(defmacro parser-seq (&rest parsers)
-  (with-gensyms (stream result parser)
-    `(lambda (,stream)
-       (nreverse
-        (reduce (lambda (,result ,parser)
-                  (cons (funcall ,parser ,stream) ,result))
-                (list ,@parsers)
-                :initial-value nil)))))
-
-(defun parser-many (parser)
+(defun unexpected (x)
   (lambda (stream)
-    (labels ((rec (s acc)
+    (parser-error stream 'unexpected-datum :unexpected x)))
+
+(defun many (parser)
+  (lambda (stream)
+    (labels ((rec (stream acc)
                (handler-case
-                   (rec (parser-stream-cdr s)
-                        (cons (funcall parser s) acc))
-                 ((or unexpected-datum end-of-stream) (c)
+                   (rec (parser-stream-cdr stream)
+                        (cons (funcall parser stream) acc))
+                 (parser-error (c)
                    (declare (ignore c))
                    acc))))
       (nreverse (rec stream nil)))))
 
-(defun parser-many1 (parser)
-  (parser-seq parser (parser-many parser)))
+(defun many1 (parser)
+  (lambda (stream)
+    (with-context (s stream)
+        ((r parser))
+      (cons r (funcall (many parser) s)))))
 
 ;;; TODO: fix ad hoc
 (defun parse (parser stream)
@@ -174,6 +236,7 @@
 (defun specific-char (c)
   (satisfy (curry #'eql c)))
 
+;;; TODO: think about stream position on failure
 (defun specific-string (string)
   (lambda (stream)
     (with-no-consumption/error (stream)
@@ -264,20 +327,28 @@
                        empty))
            stream))
 
-(defpackage :parser.test (:use :parser :cl :5am))
+(defpackage :parser.test (:use :parser :cl))
 (in-package :parser.test)
 
-(def-suite parser.test)
-(in-suite parser.test)
+(5am:def-suite parser)
+(5am:in-suite parser)
 
-(test charset-contains-p
-  (is-false (charset-contains-p #\a '(#\b)))
-  (is-true (charset-contains-p #\a '(#\a)))
-  (is-true (charset-contains-p #\Newline '(#\Space #\Tab #\Newline)))
-  (is-true (charset-contains-p #\m '((#\a . #\z))))
-  (is-false (charset-contains-p #\m '((#\A . #\Z))))
-  (is-true (charset-contains-p #\o '((#\a . #\z) #\Space #\Tab #\Newline)))
-  (is-true (charset-contains-p #\Tab '((#\a . #\z) #\Space #\Tab #\Newline))))
+(5am:test with-context
+  (with-context (s (string->parser-stream "a"))
+      ((c (any-char)))
+    (5am:is (eql #\a c)))
+  (with-context (s (string->parser-stream "b"))
+      ((c (any-char)))
+    (5am:is (eql #\b c)))
+  (with-context (s (string->parser-stream "a1"))
+      ((c (any-char))
+       (d (digit)))
+    (5am:is (equal '(#\a . #\1) (cons c d))))
+  (with-context (s (string->parser-stream "abc"))
+      ((c0 (any-char))
+       (c1 (any-char)))
+    (values :for-avoiding-warnings c0 c1)
+    (5am:is (eql #\c (parser-stream-car s)))))
 
 (test specific-char
   (is (eql #\a (parse (specific-char #\a) "a")))
@@ -367,39 +438,29 @@
   (signals unexpected-datum
     (parse (space) "a")))
 
-(test parser-or
-  (signals not-expected
-    (parse (parser-or (char-parser #\a)) "b"))
-  (is (eql #\a (parse (parser-or (char-parser #\a)) "a")))
-  (is (eql #\a (parse (parser-or (char-parser #\b)
-                                 (char-parser #\a))
-                      "a")))
-  (signals not-expected
-    (parse (parser-or (char-parser #\a)
-                      (char-parser #\b))
+(5am:test choice
+  (5am:signals parser-error
+    (parse (choice) "a"))
+  (5am:signals parser-error
+    (parse (choice (specific-char #\a)) "b"))
+  ;(5am:signals unexpected-datum
+  ;  (parse (choice (specific-string "aa")) "ab"))
+  (5am:is (eql #\a (parse (choice (specific-char #\a)) "a")))
+  (5am:is (eql #\a (parse (choice (specific-char #\a)
+                                  (specific-char #\b))
+                          "a")))
+  (5am:is (eql #\b (parse (choice (specific-char #\a)
+                                  (specific-char #\b))
+                          "b")))
+  (5am:signals parser-error
+    (parse (choice (specific-char #\a)
+                   (specific-char #\b))
            "c")))
 
 (test parser-try
   (is (eql #\a (parse (parser-try (specific-char #\a)) "a")))
   (signals unexpected-datum
     (parse (parser-try (specific-char #\a)) "b")))
-
-(test with-context
-  (with-context (s (string->parser-stream "a"))
-      ((c (any-char)))
-    (is (eql #\a c)))
-  (with-context (s (string->parser-stream "b"))
-      ((c (any-char)))
-    (is (eql #\b c)))
-  (with-context (s (string->parser-stream "a1"))
-      ((c (any-char))
-       (d (digit)))
-    (is (equal '(#\a . #\1) (cons c d))))
-  (with-context (s (string->parser-stream "abc"))
-      ((c0 (any-char))
-       (c1 (any-char)))
-    (values :for-avoiding-warnings c0 c1)
-    (is (eql #\c (parser-stream-car s)))))
 
 (test parser-cont
   (is (eq nil (parse (parser-cont) "any string is not read")))
