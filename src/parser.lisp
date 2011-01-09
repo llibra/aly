@@ -1,52 +1,4 @@
-(defpackage :parser
-  (:use :cl)
-  (:import-from :alexandria :curry :rcurry :with-gensyms)
-  (:import-from :anaphora :aif :it)
-  (:export :make-parser-stream
-           :string->parser-stream
-           :parser-stream-car
-           :parser-stream-cdr
-
-           :parser-error
-           :simple-parser-error
-           :unexpected-datum
-           :end-of-stream
-
-           :with-no-consumption/failure
-           :with-context
-           :with-expected-label
-           
-           :return-result
-           :sequence
-           :choice
-           :fail
-           :try
-           :unexpected
-
-           :many
-           :many1
-
-           :parse
-
-           ;:one-of
-           ;:none-of
-           :satisfy
-           :specific-char
-           :specific-string
-           :any-char
-           :upper
-           :lower
-           :letter
-           :alpha-num
-           :digit
-           :hex-digit
-           :oct-digit
-           :newline
-           :tab
-           :space
-           :spaces))
-
-(in-package :parser)
+(in-package :aly)
 
 ;;;; Stream
 
@@ -58,13 +10,17 @@
 (defun make-parser-stream (generator)
   (cons (funcall generator) generator))
 
-(defun string->parser-stream (string)
+(defun parser-stream/string (string)
   (let ((in (make-string-input-stream string)))
     (flet ((f ()
              (let ((c (read-char in nil)))
                (unless c (close in))
                c)))
       (make-parser-stream #'f))))
+
+(defun parser-stream (x)
+  (etypecase x
+    (string (parser-stream/string x))))
 
 (declaim (inline parser-stream-car))
 
@@ -216,11 +172,8 @@
         ((r parser))
       (cons r (funcall (many parser) s)))))
 
-;;; TODO: fix ad hoc
-(defun parse (parser stream)
-  (let ((stream (string->parser-stream stream)))
-    (values (funcall parser stream)
-            stream)))
+(defun parse (parser data)
+  (funcall parser (parser-stream data)))
 
 ;;;; Character
 
@@ -287,19 +240,8 @@
 
 ;;;;
 
-(defun empty (stream)
-  (declare (ignore stream))
-  nil)
-
-(defun not-brace (stream)
-  (funcall
-   (make-parser
-    (complement (lambda (x)
-                  (or (eql x #\{)
-                      (eql x #\})))))
-   stream))
-
 ;; TODO: :>を廃止して、デフォルトでparser-seqにする
+#+(or)
 (defmacro parser (exp)
   (labels ((rec (exp)
              (if exp
@@ -326,158 +268,3 @@
                            {x})
                        empty))
            stream))
-
-(defpackage :parser.test (:use :parser :cl))
-(in-package :parser.test)
-
-(5am:def-suite parser)
-(5am:in-suite parser)
-
-(5am:test with-context
-  (with-context (s (string->parser-stream "a"))
-      ((c (any-char)))
-    (5am:is (eql #\a c)))
-  (with-context (s (string->parser-stream "b"))
-      ((c (any-char)))
-    (5am:is (eql #\b c)))
-  (with-context (s (string->parser-stream "a1"))
-      ((c (any-char))
-       (d (digit)))
-    (5am:is (equal '(#\a . #\1) (cons c d))))
-  (with-context (s (string->parser-stream "abc"))
-      ((c0 (any-char))
-       (c1 (any-char)))
-    (values :for-avoiding-warnings c0 c1)
-    (5am:is (eql #\c (parser-stream-car s)))))
-
-(test specific-char
-  (is (eql #\a (parse (specific-char #\a) "a")))
-  (is (eql #\b (parse (specific-char #\b) "b")))
-  (signals unexpected-datum
-    (parse (specific-char #\a) "b")))
-
-(test specific-string
-  (is (equal "a" (parse (specific-string "a") "a")))
-  (is (equal "a" (parse (specific-string "a") "abc")))
-  (let ((s "string"))
-    (is (equal s (parse (specific-string s) s)))
-    (signals unexpected-datum
-      (parse (specific-string s) "another")))
-  (let ((s (string->parser-stream "string")))
-    (handler-case (funcall (specific-string "strong") s)
-      (parser-error (c)
-        (is (eq s (parser-error-stream c)))))))
-
-(test any-char
-  (is (eql #\a (parse (any-char) "a")))
-  (is (eql #\Space (parse (any-char) " "))))
-
-(test upper
-  (is (eql #\A (parse (upper) "A")))
-  (is (eql #\B (parse (upper) "B")))
-  (signals unexpected-datum
-    (parse (upper) "a")))
-
-(test lower
-  (is (eql #\a (parse (lower) "a")))
-  (is (eql #\b (parse (lower) "b")))
-  (signals unexpected-datum
-    (parse (lower) "A")))
-
-(test letter
-  (is (eql #\a (parse (letter) "a")))
-  (is (eql #\A (parse (letter) "A")))
-  (signals unexpected-datum
-    (parse (letter) "!")))
-
-(test alpha-num
-  (is (eql #\a (parse (alpha-num) "a")))
-  (is (eql #\0 (parse (alpha-num) "0")))
-  (signals unexpected-datum
-    (parse (alpha-num) " ")))
-
-(test digit
-  (is (eql #\0 (parse (digit) "0")))
-  (is (eql #\1 (parse (digit) "1")))
-  (is (eql #\f (parse (digit 16) "f")))
-  (signals unexpected-datum
-    (parse (digit) "a"))
-  (signals unexpected-datum
-    (parse (digit 16) "g")))
-
-(test hex-digit
-  (is (eql #\0 (parse (hex-digit) "0")))
-  (is (eql #\a (parse (hex-digit) "a")))
-  (is (eql #\F (parse (hex-digit) "F")))
-  (signals unexpected-datum
-    (parse (hex-digit) "g")))
-
-(test oct-digit
-  (is (eql #\0 (parse (oct-digit) "0")))
-  (is (eql #\7 (parse (oct-digit) "7")))
-  (signals unexpected-datum
-    (parse (oct-digit) "8")))
-
-(test newline
-  (is (eql #\Newline (parse (newline) "
-")))
-  (signals unexpected-datum
-    (parse (newline) "a")))
-
-(test tab
-  (is (eql #\Tab (parse (tab) "	")))
-  (signals unexpected-datum
-    (parse (tab) "a")))
-
-(test space
-  (is (eql #\Space (parse (space) " ")))
-  (is (eql #\Page (parse (space) "")))
-  (is (eql #\Tab (parse (space) "	")))
-  (is (eql #\Newline (parse (space) "
-")))
-  (signals unexpected-datum
-    (parse (space) "a")))
-
-(5am:test choice
-  (5am:signals parser-error
-    (parse (choice) "a"))
-  (5am:signals parser-error
-    (parse (choice (specific-char #\a)) "b"))
-  ;(5am:signals unexpected-datum
-  ;  (parse (choice (specific-string "aa")) "ab"))
-  (5am:is (eql #\a (parse (choice (specific-char #\a)) "a")))
-  (5am:is (eql #\a (parse (choice (specific-char #\a)
-                                  (specific-char #\b))
-                          "a")))
-  (5am:is (eql #\b (parse (choice (specific-char #\a)
-                                  (specific-char #\b))
-                          "b")))
-  (5am:signals parser-error
-    (parse (choice (specific-char #\a)
-                   (specific-char #\b))
-           "c")))
-
-(test parser-try
-  (is (eql #\a (parse (parser-try (specific-char #\a)) "a")))
-  (signals unexpected-datum
-    (parse (parser-try (specific-char #\a)) "b")))
-
-(test parser-cont
-  (is (eq nil (parse (parser-cont) "any string is not read")))
-  (is (equal '(#\a)
-             (parse (parser-cont (char-parser #\a))
-                    "a")))
-  (signals not-expected
-    (parse (parser-cont (char-parser #\a))
-           "b"))
-  (is (equal '(#\a #\a)
-             (parse (parser-cont (char-parser #\a)
-                                 (char-parser #\a))
-                    "aa")))
-  (is (equal '(#\a #\b)
-             (parse (parser-cont (char-parser #\a)
-                                 (char-parser #\b))
-                    "ab")))
-  (signals not-expected
-    (parse (parser-cont (char-parser #\a)
-                        (char-parser #\b))
