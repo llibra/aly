@@ -188,16 +188,14 @@
 (defun specific-char (c)
   (satisfy (curry #'eql c)))
 
-;;; TODO: think about stream position on failure
 (defun specific-string (string)
   (lambda (stream)
-    (with-no-consumption/failure (stream)
-      (values string
-              (reduce (lambda (s x)
-                        (funcall (specific-char x) s)
-                        (parser-stream-cdr s))
-                      string
-                      :initial-value stream)))))
+    (values string
+            (reduce (lambda (s x)
+                      (funcall (specific-char x) s)
+                      (parser-stream-cdr s))
+                    string
+                    :initial-value stream))))
 
 (defun any-char ()
   (satisfy (constantly t)))
