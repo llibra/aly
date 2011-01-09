@@ -28,12 +28,11 @@
   (car stream))
 
 (defun parser-stream-cdr (stream)
-  (cond ((functionp (cdr stream))
-         (aif (funcall (cdr stream))
-              (setf (cdr stream) (cons it (cdr stream)))
-              (setf (cdr stream) nil)))
-        (t
-         (cdr stream))))
+  (if (functionp (cdr stream))
+      (aif (funcall (cdr stream))
+           (setf (cdr stream) (cons it (cdr stream)))
+           (setf (cdr stream) nil))
+      (cdr stream)))
 
 ;;;; Conditions
 
