@@ -192,7 +192,7 @@
 ;;; TODO: think about stream position on failure
 (defun specific-string (string)
   (lambda (stream)
-    (with-no-consumption/error (stream)
+    (with-no-consumption/failure (stream)
       (values string
               (reduce (lambda (s x)
                         (funcall (specific-char x) s)
