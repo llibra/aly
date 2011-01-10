@@ -15,19 +15,19 @@
 
            :with-no-consumption/failure
            :with-context
-           :with-expected-label
-           
+           :with-expected
+           :parse
            :return-result
            :sequence
            :choice
            :fail
            :try
            :unexpected
-
            :many
-           :many1
+           :skip-many
 
-           :parse
+           :many1
+           :skip-many1
 
            ;:one-of
            ;:none-of

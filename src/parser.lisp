@@ -34,7 +34,7 @@
            (setf (cdr stream) nil))
       (cdr stream)))
 
-;;;; Conditions
+;;;; Condition
 
 (define-condition parser-error (error)
   ((stream :initarg :stream :accessor parser-error-stream)))
@@ -80,8 +80,6 @@
              :stream stream :control condition :arguments arguments)
       (apply #'error condition :stream stream arguments)))
 
-;;;; Macros
-
 (defmacro with-no-consumption/failure ((stream) &body body)
   (with-gensyms (condition)
     `(handler-case
@@ -102,15 +100,15 @@
        (declare (ignorable ,var))
        ,(rec bindings))))
 
-(defmacro with-expected-label ((label) &body body)
+(defmacro with-expected ((str) &body body)
   (with-gensyms (condition)
     `(handler-case (progn ,@body)
        (unexpected-datum (,condition)
          (setf (unexpected-datum-unexpected ,condition) nil)
-         (setf (unexpected-datum-expected ,condition) ,label)
+         (setf (unexpected-datum-expected ,condition) ,str)
          (error ,condition)))))
 
-;;;; Primitives
+;;;; Primitive
 
 (defun return-result (x)
   (lambda (stream)
@@ -154,16 +152,30 @@
   (lambda (stream)
     (parser-error stream 'unexpected-datum :unexpected x)))
 
+(defun %many (accum parser stream)
+  (labels ((rec (stream acc)
+             (handler-case
+                 (rec (parser-stream-cdr stream)
+                      (funcall accum (funcall parser stream) acc))
+               (parser-error (c)
+                 (declare (ignore c))
+                 (values acc (parser-stream-cdr stream))))))
+    (rec stream nil)))
+
 (defun many (parser)
   (lambda (stream)
-    (labels ((rec (stream acc)
-               (handler-case
-                   (rec (parser-stream-cdr stream)
-                        (cons (funcall parser stream) acc))
-                 (parser-error (c)
-                   (declare (ignore c))
-                   acc))))
-      (nreverse (rec stream nil)))))
+    (multiple-value-bind (r s)
+        (%many #'cons parser stream)
+      (values (nreverse r) s))))
+
+(defun skip-many (parser)
+  (lambda (stream)
+    (%many (constantly nil) parser stream)))
+
+(defun parse (parser data)
+  (funcall parser (parser-stream data)))
+
+;;;; Combinator
 
 (defun many1 (parser)
   (lambda (stream)
@@ -171,8 +183,8 @@
         ((r parser))
       (cons r (funcall (many parser) s)))))
 
-(defun parse (parser data)
-  (funcall parser (parser-stream data)))
+(defun skip-many1 (parser)
+  (sequence parser (skip-many parser)))
 
 ;;;; Character
 
@@ -196,6 +208,12 @@
                       (parser-stream-cdr s))
                     string
                     :initial-value stream))))
+
+(defun one-of (cs)
+  (fail "Not implemented."))
+
+(defun none-of (cs)
+  (fail "Not implemented."))
 
 (defun any-char ()
   (satisfy (constantly t)))
@@ -233,35 +251,4 @@
                    '(#\Space #\Page #\Tab #\Newline)))))
 
 (defun spaces ()
-  'need-implementation)
-
-;;;;
-
-;; TODO: :>を廃止して、デフォルトでparser-seqにする
-#+(or)
-(defmacro parser (exp)
-  (labels ((rec (exp)
-             (if exp
-                 (etypecase (car exp)
-                   (cons (cons (expand (car exp)) (rec (cdr exp))))
-                   (symbol (cons `#',(car exp) (rec (cdr exp)))))
-                 nil))
-           (expand (exp)
-             (if exp
-                 (ecase (car exp)
-                   (:> (cons 'parser-seq (rec (cdr exp))))
-                   (:/ (cons 'parser-or (rec (cdr exp))))
-                   (:* (cons 'parser-many (rec (cdr exp))))
-                   (:+ (cons 'parser-many1 (rec (cdr exp))))
-                   (:f (cdr exp)))
-                 nil)))
-    `(parser-seq ,(expand exp))))
-
-#+(or)
-(defun f (stream)
-  (funcall (parser (:/ (:> (:f char-parser #\{)
-                           (:/ (:+ not-brace) {x})
-                           (:f char-parser #\})
-                           {x})
-                       empty))
-           stream))
+  (fail "Not implemented."))
