@@ -6,9 +6,10 @@
 ;;;
 ;;; <parser-stream> : nil | (<token> . <stream-or-generator>) 
 ;;; <stream-or-generator> : <parser-stream> | <generator>
+;;; <token> : (<datum> . <position>)
 
 (defun make-parser-stream (generator)
-  (cons (funcall generator) generator))
+  (cons (cons (funcall generator) 0) generator))
 
 (defun parser-stream/string (string)
   (let ((in (make-string-input-stream string)))
@@ -30,7 +31,8 @@
 (defun parser-stream-cdr (stream)
   (if (functionp (cdr stream))
       (aif (funcall (cdr stream))
-           (setf (cdr stream) (cons it (cdr stream)))
+           (setf (cdr stream)
+                 (cons (cons it (1+ (cdar stream))) (cdr stream)))
            (setf (cdr stream) nil))
       (cdr stream)))
 
@@ -192,10 +194,10 @@
   (lambda (stream)
     (unless stream
       (error 'end-of-stream :stream stream))
-    (let ((datum (parser-stream-car stream)))
-      (if (funcall pred datum)
-          (values datum (parser-stream-cdr stream))
-          (error 'unexpected-datum :stream stream :datum datum)))))
+    (let ((token (parser-stream-car stream)))
+      (if (funcall pred (car token))
+          (values (car token) (parser-stream-cdr stream))
+          (error 'unexpected-datum :stream stream :datum (car token))))))
 
 (defun specific-char (c)
   (satisfy (curry #'eql c)))
@@ -210,9 +212,11 @@
                     :initial-value stream))))
 
 (defun one-of (cs)
+  (declare (ignore cs))
   (fail "Not implemented."))
 
 (defun none-of (cs)
+  (declare (ignore cs))
   (fail "Not implemented."))
 
 (defun any-char ()
