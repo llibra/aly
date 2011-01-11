@@ -110,7 +110,7 @@
 
 ;;;; Primitive
 
-(defun return-result (x)
+(defun result (x)
   (lambda (stream)
     (values x stream)))
 

@@ -17,7 +17,7 @@
            :with-context
            :with-expected
            :parse
-           :return-result
+           :result
            :sequence
            :choice
            :fail
