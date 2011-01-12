@@ -1,6 +1,6 @@
 (defpackage :aly
   (:use :cl)
-  (:import-from :alexandria :curry :rcurry :with-gensyms)
+  (:import-from :alexandria :curry :rcurry :with-gensyms :once-only)
   (:import-from :anaphora :aif :it)
   (:export :make-parser-stream
            :parser-stream/string
@@ -14,7 +14,6 @@
            :end-of-stream
 
            :with-no-consumption/failure
-           :with-context
            :with-expected
            :parse
            :result
@@ -29,8 +28,8 @@
            :many1
            :skip-many1
 
-           ;:one-of
-           ;:none-of
+           :one-of
+           :none-of
            :satisfy
            :specific-char
            :specific-string

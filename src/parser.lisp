@@ -23,6 +23,9 @@
   (etypecase x
     (string (parser-stream/string x))))
 
+(defun parser-stream-p (x)
+  (and (consp x) (consp (car x))))
+
 (declaim (inline parser-stream-car))
 
 (defun parser-stream-car (stream)
@@ -82,6 +85,8 @@
              :stream stream :control condition :arguments arguments)
       (apply #'error condition :stream stream arguments)))
 
+;;;; Macro
+
 (defmacro with-no-consumption/failure ((stream) &body body)
   (with-gensyms (condition)
     `(handler-case
@@ -89,18 +94,6 @@
        ((or unexpected-datum end-of-stream) (,condition)
          (setf (parser-error-stream ,condition) ,stream)
          (error ,condition)))))
-
-(defmacro with-context ((var stream) (&rest bindings) &body body)
-  (labels ((rec (rest)
-             (if rest
-                 `(multiple-value-bind (,(caar rest) ,var)
-                      (funcall ,@(cdar rest) ,var)
-                    (declare (ignorable ,var))
-                    ,(rec (cdr rest)))
-                 `(progn ,@body))))
-    `(let ((,var ,stream))
-       (declare (ignorable ,var))
-       ,(rec bindings))))
 
 (defmacro with-expected ((str) &body body)
   (with-gensyms (condition)
@@ -174,16 +167,39 @@
   (lambda (stream)
     (%many (constantly nil) parser stream)))
 
-(defun parse (parser data)
-  (funcall parser (parser-stream data)))
+(defmacro parse (data &body parsers)
+  (check-type parsers cons)
+  (with-gensyms (stream ignore)
+    (labels ((binding-p (x)
+               (and (consp x)
+                    (symbolp (cadr x))
+                    (equal (symbol-name (cadr x)) "<-")))
+             (rec (rest)
+               (cond ((null (cdr rest))
+                      `(funcall ,(car rest) ,stream))
+                     ((binding-p (car rest))
+                      `(multiple-value-bind (,(caar rest) ,stream)
+                           (funcall ,@(cddar rest) ,stream)
+                         ,(rec (cdr rest))))
+                     (t
+                      `(multiple-value-bind (,ignore ,stream)
+                           (funcall ,(car rest) ,stream)
+                         (declare (ignore ,ignore))
+                         ,(rec (cdr rest)))))))
+      (once-only (data)
+        `(let ((,stream (if (parser-stream-p ,data)
+                            ,data
+                            (parser-stream ,data))))
+           ,(rec parsers))))))
 
 ;;;; Combinator
 
 (defun many1 (parser)
   (lambda (stream)
-    (with-context (s stream)
-        ((r parser))
-      (cons r (funcall (many parser) s)))))
+    (parse stream
+      (r  <- parser)
+      (rs <- (many parser))
+      (result (cons r rs)))))
 
 (defun skip-many1 (parser)
   (sequence parser (skip-many parser)))

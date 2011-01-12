@@ -35,63 +35,62 @@ result and next stream as multiple values.
 
     (defun additive ()
       (flet ((f1 (stream)
-               (aly:with-context (s stream)
-                   ((v1 (multitive))
-                    (_ (aly:specific-char #\+))
-                    (v2 (additive)))
-                 (values (+ v1 v2) s)))
+               (aly:parse stream
+                 (x <- (multitive))
+                 (aly:specific-char #\+)
+                 (y <- (additive))
+                 (aly:result (+ x y))))
              (f2 (stream)
-               (aly:with-context (s stream)
-                   ((v1 (multitive))
-                    (_ (aly:specific-char #\-))
-                    (v2 (additive)))
-                 (values (- v1 v2) s))))
+               (aly:parse stream
+                 (x <- (multitive))
+                 (aly:specific-char #\-)
+                 (y <- (additive))
+                 (aly:result (- x y)))))
         (aly:choice (aly:try #'f1)
                     (aly:try #'f2)
                     (multitive))))
     
     (defun multitive ()
       (flet ((f1 (stream)
-               (aly:with-context (s stream)
-                   ((v1 (primary))
-                    (_ (aly:specific-char #\*))
-                    (v2 (multitive)))
-                 (values (* v1 v2) s)))
+               (aly:parse stream
+                 (x <- (primary))
+                 (aly:specific-char #\*)
+                 (y <- (multitive))
+                 (aly:result (* x y))))
              (f2 (stream)
-               (aly:with-context (s stream)
-                   ((v1 (primary))
-                    (_ (aly:specific-char #\/))
-                    (v2 (multitive)))
-                 (values (/ v1 v2) s))))
-      (aly:choice (aly:try #'f1)
-                  (aly:try #'f2)
-                  (primary))))
+               (aly:parse stream
+                 (x <- (primary))
+                 (aly:specific-char #\/)
+                 (y <- (multitive))
+                 (aly:result (/ x y)))))
+        (aly:choice (aly:try #'f1)
+                    (aly:try #'f2)
+                    (primary))))
     
     (defun primary ()
       (flet ((f (stream)
-               (aly:with-context (s stream)
-                   ((kakko (aly:specific-char #\())
-                    (r (additive))
-                    (kokka (aly:specific-char #\))))
-                 (values r s))))
+               (aly:parse stream
+                 (aly:specific-char #\()
+                 (r <- (additive))
+                 (aly:specific-char #\))
+                 (aly:result r))))
         (aly:choice (aly:try #'f) (decimal))))
     
     (defun decimal ()
       (lambda (stream)
-        (aly:with-context (s stream)
-            ((c (aly:digit)))
-          (let ((r (read-from-string (princ-to-string c))))
-            (values r s)))))
+        (aly:parse stream
+          (c <- (aly:digit))
+          (aly:result (read-from-string (princ-to-string c))))))
 
 Let's run parser.
 
 パーサを実行します。
 
-    (aly:parse (additive) "1+2")
+    (aly:parse "1+2" (additive))
     ;; =>  3, NIL
-    (aly:parse (additive) "4*2-((3+1)-(9/3))*2")
+    (aly:parse "4*2-((3+1)-(9/3))*2" (additive))
     ;; =>  6, NIL
-    (aly:parse (additive) "4**2-3/5")
+    (aly:parse "4**2-3/5" (additive))
     ;; >>  Error
 
 No documentation yet. Please refer to tests in t/ for how to use each functions.

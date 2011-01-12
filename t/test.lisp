@@ -3,22 +3,17 @@
 (5am:def-suite parser)
 (5am:in-suite parser)
 
-(5am:test with-context
-  (with-context (s (parser-stream "a"))
-      ((c (any-char)))
-    (5am:is (eql #\a c)))
-  (with-context (s (parser-stream "b"))
-      ((c (any-char)))
-    (5am:is (eql #\b c)))
-  (with-context (s (parser-stream "a1"))
-      ((c (any-char))
-       (d (digit)))
-    (5am:is (equal '(#\a . #\1) (cons c d))))
-  (with-context (s (parser-stream "abc"))
-      ((c0 (any-char))
-       (c1 (any-char)))
-    (values :for-avoiding-warnings c0 c1)
-    (5am:is (eql #\c (parser-stream-car s)))))
+(5am:test parse
+  (5am:is (eql #\a (parse "a" (any-char))))
+  (5am:is (eql #\b (parse "b" (any-char))))
+  (5am:is (equal '(#\a . 1)
+                 (parse "a1"
+                   (c <- (any-char))
+                   (d <- (digit))
+                   (result (cons c d)))))
+  (5am:is (eql #\c (multiple-value-bind (r s)
+                       (parse "abc" (any-char) (any-char))
+                     (car (parser-stream-car s))))))
 
 (5am:test specific-char
   (5am:is (eql #\a (parse (specific-char #\a) "a")))
