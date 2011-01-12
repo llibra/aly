@@ -9,6 +9,7 @@
            :parser-stream-cdr
 
            :parser-error
+           :parser-error-stream
            :simple-parser-error
            :unexpected-datum
            :end-of-stream
