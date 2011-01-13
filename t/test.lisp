@@ -3,6 +3,12 @@
 (5am:def-suite all)
 (5am:in-suite all)
 
+(5am:def-suite stream :in all)
+(5am:in-suite stream)
+
+(5am:test parser-stream
+  (5am:is (eq nil (parser-stream ""))))
+
 (5am:def-suite primitive :in all)
 (5am:in-suite primitive)
 
@@ -21,16 +27,6 @@
 
 (5am:test result
   (5am:is (eql #\a (funcall (result #\a) nil))))
-
-
-(5am:test space
-  (5am:is (eql #\Space (parse " " (space))))
-  (5am:is (eql #\Page (parse "" (space))))
-  (5am:is (eql #\Tab (parse "	" (space))))
-  (5am:is (eql #\Newline (parse "
-" (space))))
-  (5am:signals unexpected-datum
-    (parse "a" (space))))
 
 (5am:test sequence
   (5am:signals parser-error
@@ -69,6 +65,19 @@
   (5am:signals unexpected-datum
     (parse "b" (try (specific-char #\a)))))
 
+(5am:test many
+  (5am:is (equal '(#\a) (parse "a" (many (any-char)))))
+  (5am:is (equal '(#\b) (parse "b" (many (any-char)))))
+  (let ((s (parser-stream "ab")))
+    (multiple-value-bind (rv rs)
+        (parse s (many (specific-char #\b)))
+      (declare (ignore rv))
+      (5am:is (eq s rs)))
+    (multiple-value-bind (rv rs)
+        (parse s (many (specific-char #\a)))
+      (declare (ignore rv))
+      (5am:is (eq (parser-stream-cdr s) rs)))))
+
 (5am:def-suite character :in all)
 (5am:in-suite character)
 
@@ -91,6 +100,26 @@
                      (parser-stream-cdr
                       (parser-stream-cdr s)))
                     (parser-error-stream c)))))))
+
+(5am:test one-of
+  (5am:is (eql #\a (parse "a" (one-of #\a))))
+  (5am:is (eql #\b (parse "b" (one-of #\b))))
+  (5am:signals unexpected-datum
+    (parse "b" (one-of #\a)))
+  (5am:is (eql #\a (parse "a" (one-of #\a #\b))))
+  (5am:is (eql #\b (parse "b" (one-of #\a #\b))))
+  (5am:signals unexpected-datum
+    (parse "c" (one-of #\a #\b))))
+
+(5am:test none-of
+  (5am:is (eql #\a (parse "a" (none-of #\b))))
+  (5am:is (eql #\b (parse "b" (none-of #\c))))
+  (5am:signals unexpected-datum
+    (parse "a" (none-of #\a)))
+  (5am:is (eql #\a (parse "a" (none-of #\b #\c))))
+  (5am:is (eql #\b (parse "b" (none-of #\a #\c))))
+  (5am:signals unexpected-datum
+    (parse "b" (none-of #\a #\b))))
 
 (5am:test any-char
   (5am:is (eql #\a (parse "a" (any-char))))
@@ -152,3 +181,34 @@
   (5am:is (eql #\Tab (parse "	" (tab))))
   (5am:signals unexpected-datum
     (parse "a" (tab))))
+
+(5am:test space
+  (5am:is (eql #\Space (parse " " (space))))
+  (5am:is (eql #\Page (parse "" (space))))
+  (5am:is (eql #\Tab (parse "	" (space))))
+  (5am:is (eql #\Newline (parse "
+" (space))))
+  (5am:signals unexpected-datum
+    (parse "a" (space))))
+
+(5am:test spaces
+  (5am:is (eq nil (parse "" (spaces))))
+  (let ((s (parser-stream " ")))
+    (5am:is (eq (parser-stream-cdr s)
+                (multiple-value-bind (rv rs)
+                    (parse s (spaces))
+                  (declare (ignore rv))
+                  rs))))
+  (let ((s (parser-stream " a")))
+    (5am:is (eq (parser-stream-cdr s)
+                (multiple-value-bind (rv rs)
+                    (parse s (spaces))
+                  (declare (ignore rv))
+                  rs))))
+  (let ((s (parser-stream "  a")))
+    (5am:is (eq (parser-stream-cdr
+                 (parser-stream-cdr s))
+                (multiple-value-bind (rv rs)
+                    (parse s (spaces))
+                  (declare (ignore rv))
+                  rs)))))

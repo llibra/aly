@@ -9,7 +9,9 @@
 ;;; <token> : (<datum> . <position>)
 
 (defun make-parser-stream (generator)
-  (cons (cons (funcall generator) 0) generator))
+  (aif (funcall generator)
+       (cons (cons it 0) generator)
+       nil))
 
 (defun parser-stream/string (string)
   (let ((in (make-string-input-stream string)))
@@ -179,7 +181,7 @@
                       (funcall accum (funcall parser stream) acc))
                (parser-error (c)
                  (declare (ignore c))
-                 (values acc (parser-stream-cdr stream))))))
+                 (values acc stream)))))
     (rec stream nil)))
 
 (defun many (parser)
@@ -227,13 +229,11 @@
                     string
                     :initial-value stream))))
 
-(defun one-of (cs)
-  (declare (ignore cs))
-  (fail "Not implemented."))
+(defun one-of (&rest cs)
+  (satisfy (rcurry #'member cs)))
 
-(defun none-of (cs)
-  (declare (ignore cs))
-  (fail "Not implemented."))
+(defun none-of (&rest cs)
+  (satisfy (complement (rcurry #'member cs))))
 
 (defun any-char ()
   (satisfy (constantly t)))
@@ -271,4 +271,4 @@
                    '(#\Space #\Page #\Tab #\Newline)))))
 
 (defun spaces ()
-  (fail "Not implemented."))
+  (skip-many (space)))
