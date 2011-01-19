@@ -23,7 +23,8 @@
 
 (defun parser-stream (x)
   (etypecase x
-    (string (parser-stream/string x))))
+    (string (parser-stream/string x))
+    (null nil)))
 
 (defun parser-stream-p (x)
   (and (consp x) (consp (car x))))
