@@ -91,7 +91,7 @@ Let's run parser.
     (aly:parse "4*2-((3+1)-(9/3))*2" (additive))
     ;; =>  6, NIL
     (aly:parse "4**2-3/5" (additive))
-    ;; >>  Error
+    ;; =>  4, ((#\* . 1) (#\* . 2) ...)
 
 No documentation yet. Please refer to tests in t/ for how to use each functions.
 

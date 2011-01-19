@@ -60,16 +60,19 @@
 (define-condition failure/unexpected (failure) ()
   (:report (lambda (c s)
              (if (failure-datum c)
-                 (format s "Parser is not expecting ~S." (failure-datum c))
+                 (format s "Parser encounterd unexpected datum ~S at ~S."
+                         (failure-datum c)
+                         (failure-position c))
                  (format s "Parser encountered unexpected end of stream.")))))
 
 (define-condition failure/expected (failure)
   ((expected :initarg :expected :accessor failure-expected))
   (:report (lambda (c s)
              (if (failure-datum c)
-                 (format s "Parser is expecting ~A, but got ~S."
+                 (format s "Parser is expecting ~A, but got ~S at ~S."
                          (failure-expected c)
-                         (failure-datum c))
+                         (failure-datum c)
+                         (failure-position c))
                  (format s "Parser is expecting ~A, but encountered unexpected end of stream."
                          (failure-expected c))))))
 
@@ -145,7 +148,12 @@
 
 (defun fail/unexpected (x)
   (lambda (stream)
-    (error 'failure/unexpected :stream stream :datum x)))
+    (error 'failure/unexpected
+           :stream stream
+           :datum x
+           :position (if stream
+                         (cdr (parser-stream-car stream))
+                         "end of stream"))))
 
 (defun try (parser)
   (lambda (stream)
@@ -162,6 +170,7 @@
         (error 'failure/expected
                :stream (parser-error-stream c)
                :datum (failure-datum c)
+               :position (failure-position c)
                :expected x)))))
 
 (defun %many (accum parser stream)
@@ -201,26 +210,29 @@
 (defun satisfy (pred)
   (lambda (stream)
     (unless stream
-      (error 'failure/unexpected :stream stream :datum nil))
+      (error 'failure/unexpected
+             :stream stream
+             :datum nil
+             :position "end of stream"))
     (let ((token (parser-stream-car stream)))
       (if (funcall pred (car token))
           (values (car token) (parser-stream-cdr stream))
           (error 'failure/unexpected
                  :stream stream
-                 :datum (car token))))))
+                 :datum (car token)
+                 :position (cdr token))))))
 
 (defun specific-char (c)
   (expect (satisfy (curry #'eql c)) c))
 
 (defun specific-string (string)
-  (expect (lambda (stream)
-            (values string
-                    (reduce (lambda (s x)
-                              (funcall (specific-char x) s)
-                              (parser-stream-cdr s))
-                            string
-                            :initial-value stream)))
-          string))
+  (lambda (stream)
+    (values string
+            (reduce (lambda (s x)
+                      (funcall (specific-char x) s)
+                      (parser-stream-cdr s))
+                    string
+                    :initial-value stream))))
 
 (labels ((rec (item last-item rest acc)
            (cond ((null rest) (nreverse acc))
