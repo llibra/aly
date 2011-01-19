@@ -29,10 +29,10 @@
   (5am:is (eql #\a (funcall (result #\a) nil))))
 
 (5am:test sequence
-  (5am:signals parser-error
+  (5am:signals failure
     (parse "a" (sequence)))
   (5am:is (eql #\a (parse "a" (sequence (specific-char #\a)))))
-  (5am:signals parser-error
+  (5am:signals failure
     (parse "b" (sequence (specific-char #\a))))
   (5am:is (eql #\a (parse "aa"
                      (sequence (specific-char #\a)
@@ -42,9 +42,9 @@
                                (specific-char #\b))))))
 
 (5am:test choice
-  (5am:signals parser-error
+  (5am:signals failure
     (parse "a" (choice)))
-  (5am:signals parser-error
+  (5am:signals failure
     (parse "b" (choice (specific-char #\a))))
   (5am:is (eql #\a (parse "a" (choice (specific-char #\a)))))
   (5am:is (eql #\a (parse "a"
@@ -53,16 +53,16 @@
   (5am:is (eql #\b (parse "b"
                      (choice (specific-char #\a)
                              (specific-char #\b)))))
-  (5am:signals parser-error
+  (5am:signals failure
     (parse "c" (choice (specific-char #\a)
                        (specific-char #\b)))))
 
 (5am:test fail
-  (5am:signals parser-error (funcall (fail) nil)))
+  (5am:signals failure (funcall (fail) nil)))
 
 (5am:test try
   (5am:is (eql #\a (parse "a" (try (specific-char #\a)))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "b" (try (specific-char #\a)))))
 
 (5am:test many
@@ -84,13 +84,13 @@
 (5am:test specific-char
   (5am:is (eql #\a (parse "a" (specific-char #\a))))
   (5am:is (eql #\b (parse "b" (specific-char #\b))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "b" (specific-char #\a))))
 
 (5am:test specific-string
   (5am:is (equal "a" (parse "a" (specific-string "a"))))
   (5am:is (equal "b" (parse "b" (specific-string "b"))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "b" (specific-string "a")))
   (5am:is (equal "a" (parse "abc" (specific-string "a"))))
   (let ((s (parser-stream "string")))
@@ -104,21 +104,21 @@
 (5am:test one-of
   (5am:is (eql #\a (parse "a" (one-of #\a))))
   (5am:is (eql #\b (parse "b" (one-of #\b))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "b" (one-of #\a)))
   (5am:is (eql #\a (parse "a" (one-of #\a #\b))))
   (5am:is (eql #\b (parse "b" (one-of #\a #\b))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "c" (one-of #\a #\b))))
 
 (5am:test none-of
   (5am:is (eql #\a (parse "a" (none-of #\b))))
   (5am:is (eql #\b (parse "b" (none-of #\c))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "a" (none-of #\a)))
   (5am:is (eql #\a (parse "a" (none-of #\b #\c))))
   (5am:is (eql #\b (parse "b" (none-of #\a #\c))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "b" (none-of #\a #\b))))
 
 (5am:test any-char
@@ -128,58 +128,58 @@
 (5am:test upper
   (5am:is (eql #\A (parse "A" (upper))))
   (5am:is (eql #\B (parse "B" (upper))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "a" (upper))))
 
 (5am:test lower
   (5am:is (eql #\a (parse "a" (lower))))
   (5am:is (eql #\b (parse "b" (lower))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "A" (lower))))
 
 (5am:test letter
   (5am:is (eql #\a (parse "a" (letter))))
   (5am:is (eql #\A (parse "A" (letter))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "!" (letter))))
 
 (5am:test alpha-num
   (5am:is (eql #\a (parse "a" (alpha-num))))
   (5am:is (eql #\0 (parse "0" (alpha-num))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse " " (alpha-num))))
 
 (5am:test digit
   (5am:is (eql #\0 (parse "0" (digit))))
   (5am:is (eql #\1 (parse "1" (digit))))
   (5am:is (eql #\f (parse "f" (digit 16))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "a" (digit)))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "g" (digit 16))))
 
 (5am:test hex-digit
   (5am:is (eql #\0 (parse "0" (hex-digit))))
   (5am:is (eql #\a (parse "a" (hex-digit))))
   (5am:is (eql #\F (parse "F" (hex-digit))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "g" (hex-digit))))
 
 (5am:test oct-digit
   (5am:is (eql #\0 (parse "0" (oct-digit))))
   (5am:is (eql #\7 (parse "7" (oct-digit))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "8" (oct-digit))))
 
 (5am:test newline
   (5am:is (eql #\Newline (parse "
 " (newline))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "a" (newline))))
 
 (5am:test tab
   (5am:is (eql #\Tab (parse "	" (tab))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "a" (tab))))
 
 (5am:test space
@@ -188,7 +188,7 @@
   (5am:is (eql #\Tab (parse "	" (space))))
   (5am:is (eql #\Newline (parse "
 " (space))))
-  (5am:signals unexpected-datum
+  (5am:signals failure
     (parse "a" (space))))
 
 (5am:test spaces

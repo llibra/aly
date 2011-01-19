@@ -47,46 +47,31 @@
 (define-condition parser-error (error)
   ((stream :initarg :stream :accessor parser-error-stream)))
 
-(define-condition simple-parser-error (parser-error)
-  ((control :initarg :control :reader simple-parser-error-control)
-   (arguments :initarg :arguments :reader simple-parser-error-arguments))
-  (:report (lambda (c s)
-             (apply #'format s
-                    (simple-parser-error-control c)
-                    (simple-parser-error-arguments c)))))
+(define-condition failure (parser-error)
+  ((datum :initarg :datum :reader failure-datum)
+   (position :initarg :position :reader failure-position)))
 
-(define-condition unexpected-datum (parser-error)
-  ((expected :initform nil
-             :initarg :expected
-             :accessor unexpected-datum-expected)
-   (unexpected :initform nil
-               :initarg :unexpected
-               :accessor unexpected-datum-unexpected)
-   (datum :initform nil
-          :initarg :datum
-          :reader unexpected-datum-datum))
+(define-condition simple-failure (failure)
+  ((control :initarg :control :reader failure-control)
+   (arguments :initarg :arguments :reader failure-arguments))
   (:report (lambda (c s)
-             (assert (not (and (unexpected-datum-expected c)
-                               (unexpected-datum-unexpected c))))
-             (if (unexpected-datum-expected c)
-                 (format s "Parser is expecting ~S, but got ~S."
-                         (unexpected-datum-expected c)
-                         (unexpected-datum-datum c))
-                 (format s "Parser is not expecting ~S, but got ~S."
-                         (unexpected-datum-unexpected c)
-                         (unexpected-datum-datum c))))))
+             (apply #'format s (failure-control c) (failure-arguments c)))))
 
-(define-condition end-of-stream (parser-error)
-  ()
+(define-condition failure/unexpected (failure) ()
   (:report (lambda (c s)
-             (format s "Parser encountered end of stream on ~S."
-                     (parser-error-stream c)))))
+             (if (failure-datum c)
+                 (format s "Parser is not expecting ~S." (failure-datum c))
+                 (format s "Parser encountered unexpected end of stream.")))))
 
-(defun parser-error (stream condition &rest arguments)
-  (if (stringp condition)
-      (error 'simple-parser-error
-             :stream stream :control condition :arguments arguments)
-      (apply #'error condition :stream stream arguments)))
+(define-condition failure/expected (failure)
+  ((expected :initarg :expected :accessor failure-expected))
+  (:report (lambda (c s)
+             (if (failure-datum c)
+                 (format s "Parser is expecting ~A, but got ~S."
+                         (failure-expected c)
+                         (failure-datum c))
+                 (format s "Parser is expecting ~A, but encountered unexpected end of stream."
+                         (failure-expected c))))))
 
 ;;;; Utility
 
@@ -94,16 +79,8 @@
   (with-gensyms (condition)
     `(handler-case
          (progn ,@body)
-       ((or unexpected-datum end-of-stream) (,condition)
+       (failure (,condition)
          (setf (parser-error-stream ,condition) ,stream)
-         (error ,condition)))))
-
-(defmacro with-expected ((str) &body body)
-  (with-gensyms (condition)
-    `(handler-case (progn ,@body)
-       (unexpected-datum (,condition)
-         (setf (unexpected-datum-unexpected ,condition) nil)
-         (setf (unexpected-datum-expected ,condition) ,str)
          (error ,condition)))))
 
 ;;;; Primitive
@@ -155,7 +132,7 @@
     (labels ((rec (rest stream)
                (if rest
                    (handler-case (funcall (car rest) stream)
-                     (parser-error (c)
+                     (failure (c)
                        (if (eq stream (parser-error-stream c))
                            (rec (cdr rest) stream)
                            (error c))))
@@ -164,23 +141,35 @@
 
 (defun fail (&optional (ctrl "Parser failed.") &rest args)
   (lambda (stream)
-    (apply #'parser-error stream ctrl args)))
+    (error 'simple-failure :stream stream :control ctrl :arguments args)))
+
+(defun fail/unexpected (x)
+  (lambda (stream)
+    (error 'failure/unexpected :stream stream :datum x)))
 
 (defun try (parser)
   (lambda (stream)
     (with-no-consumption/failure (stream)
       (funcall parser stream))))
 
-(defun unexpected (x)
+(defun expect (parser x)
   (lambda (stream)
-    (parser-error stream 'unexpected-datum :unexpected x)))
+    (handler-case (funcall parser stream)
+      (failure/expected (c)
+        (setf (failure-expected c) x)
+        (error c))
+      (failure (c)
+        (error 'failure/expected
+               :stream (parser-error-stream c)
+               :datum (failure-datum c)
+               :expected x)))))
 
 (defun %many (accum parser stream)
   (labels ((rec (stream acc)
              (handler-case
                  (multiple-value-bind (r s) (funcall parser stream)
                    (rec s (funcall accum r acc)))
-               (parser-error (c)
+               (failure (c)
                  (declare (ignore c))
                  (values acc stream)))))
     (rec stream nil)))
@@ -212,64 +201,82 @@
 (defun satisfy (pred)
   (lambda (stream)
     (unless stream
-      (error 'end-of-stream :stream stream))
+      (error 'failure/unexpected :stream stream :datum nil))
     (let ((token (parser-stream-car stream)))
       (if (funcall pred (car token))
           (values (car token) (parser-stream-cdr stream))
-          (error 'unexpected-datum :stream stream :datum (car token))))))
+          (error 'failure/unexpected
+                 :stream stream
+                 :datum (car token))))))
 
 (defun specific-char (c)
-  (satisfy (curry #'eql c)))
+  (expect (satisfy (curry #'eql c)) c))
 
 (defun specific-string (string)
-  (lambda (stream)
-    (values string
-            (reduce (lambda (s x)
-                      (funcall (specific-char x) s)
-                      (parser-stream-cdr s))
-                    string
-                    :initial-value stream))))
+  (expect (lambda (stream)
+            (values string
+                    (reduce (lambda (s x)
+                              (funcall (specific-char x) s)
+                              (parser-stream-cdr s))
+                            string
+                            :initial-value stream)))
+          string))
 
-(defun one-of (&rest cs)
-  (satisfy (rcurry #'member cs)))
+(labels ((rec (item last-item rest acc)
+           (cond ((null rest) (nreverse acc))
+                 ((cdr rest)
+                  (rec item last-item (cdr rest)
+                       (cons (car rest) (cons item acc))))
+                 (t
+                  (rec item last-item (cdr rest)
+                       (cons (car rest) (cons last-item acc))))))
+         (intersperse (item list &optional (last-item item))
+           (etypecase list
+             (null nil)
+             (cons (rec item last-item (cdr list) (list (car list)))))))
+  (defun one-of (&rest cs)
+    (expect (satisfy (rcurry #'member cs))
+            (format nil "one of ~{~A~}" (intersperse ", " cs " and "))))
 
-(defun none-of (&rest cs)
-  (satisfy (complement (rcurry #'member cs))))
+  (defun none-of (&rest cs)
+    (expect (satisfy (complement (rcurry #'member cs)))
+            (format nil "except any of ~{~A~}" (intersperse ", " cs " and ")))))
 
 (defun any-char ()
   (satisfy (constantly t)))
 
 (defun upper ()
-  (satisfy #'upper-case-p))
+  (expect (satisfy #'upper-case-p) "a uppercase letter"))
 
 (defun lower ()
-  (satisfy #'lower-case-p))
+  (expect (satisfy #'lower-case-p) "a lowercase letter"))
 
 (defun letter ()
-  (satisfy #'alpha-char-p))
+  (expect (satisfy #'alpha-char-p) "a letter"))
 
 (defun alpha-num ()
-  (satisfy #'alphanumericp))
+  (expect (satisfy #'alphanumericp) "a letter or a digit"))
 
 (defun digit (&optional (radix 10))
-  (satisfy (rcurry #'digit-char-p radix)))
+  (expect (satisfy (rcurry #'digit-char-p radix)) "a digit"))
 
 (defun hex-digit ()
-  (satisfy (rcurry #'digit-char-p 16)))
+  (expect (satisfy (rcurry #'digit-char-p 16)) "a hexadecimal digit"))
 
 (defun oct-digit ()
-  (satisfy (rcurry #'digit-char-p 8)))
+  (expect (satisfy (rcurry #'digit-char-p 8)) "a octal digit"))
 
 (defun newline ()
-  (specific-char #\Newline))
+  (expect (specific-char #\Newline) "a new line"))
 
 (defun tab ()
-  (specific-char #\Tab))
+  (expect (specific-char #\Tab) "a tab"))
 
 (defun space ()
-  (satisfy (lambda (c)
-             (some (curry #'eql c)
-                   '(#\Space #\Page #\Tab #\Newline)))))
+  (expect (satisfy (lambda (c)
+                     (some (curry #'eql c)
+                           '(#\Space #\Page #\Tab #\Newline))))
+          "a space"))
 
 (defun spaces ()
   (skip-many (space)))

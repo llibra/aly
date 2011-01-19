@@ -10,19 +10,26 @@
 
            :parser-error
            :parser-error-stream
-           :simple-parser-error
-           :unexpected-datum
-           :end-of-stream
+           :failure
+           :failure-datum
+           :failure-position
+           :simple-failure
+           :failure-control
+           :failure-arguments
+           :failure/unexpected
+           :failure/expected
+           :failure-expected
 
            :with-no-consumption/failure
-           :with-expected
+
            :parse
            :result
            :sequence
            :choice
            :fail
+           :fail/unexpected
            :try
-           :unexpected
+           :expect
            :many
            :skip-many
 
