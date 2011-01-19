@@ -178,8 +178,8 @@
 (defun %many (accum parser stream)
   (labels ((rec (stream acc)
              (handler-case
-                 (rec (parser-stream-cdr stream)
-                      (funcall accum (funcall parser stream) acc))
+                 (multiple-value-bind (r s) (funcall parser stream)
+                   (rec s (funcall accum r acc)))
                (parser-error (c)
                  (declare (ignore c))
                  (values acc stream)))))
