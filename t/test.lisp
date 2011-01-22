@@ -13,68 +13,93 @@
 (5am:in-suite primitive)
 
 (5am:test parse
-  (5am:is (eql #\a (parse "a" (any-char))))
-  (5am:is (eql #\b (parse "b" (any-char))))
-  (5am:is (equal '(#\a . #\1)
-                 (parse "a1"
-                   (c <- (any-char))
-                   (d <- (digit))
-                   (result (cons c d)))))
-  (5am:is (eql #\c (multiple-value-bind (r s)
-                       (parse "abc" (any-char) (any-char))
-                     (declare (ignore r))
-                     (car (parser-stream-car s))))))
+  (5am:is (eql #\a (parse (any-char) "a")))
+  (5am:is (eql #\b (parse (any-char) "b"))))
+
+(5am:test bind
+  (5am:is (eql #\a (parse (bind (any-char)) "a")))
+  (5am:is (eql #\b (parse (bind (any-char)) "b")))
+  (5am:signals failure
+    (parse (bind (specific-char #\a)) "b"))
+  (5am:is (eql #\a (parse (bind (c <- (any-char))) "a")))
+  (5am:is (eql #\b (parse (bind (c <- (any-char))) "b")))
+  (5am:signals failure
+    (parse (bind (c <- (specific-char #\a))) "b"))
+  (5am:is (eql #\a
+               (parse (bind (any-char)
+                            (any-char))
+                      "ba")))
+  (5am:is (eql #\b
+               (parse (bind (any-char)
+                            (any-char))
+                      "ab")))
+  (5am:signals failure
+    (parse (bind (specific-char #\a)
+                 (specific-char #\b))
+           "aa"))
+  (5am:is (eql #\a
+               (parse (bind (x <- (any-char))
+                            (y <- (any-char)))
+                      "ba")))
+  (5am:is (eql #\b
+               (parse (bind (x <- (any-char))
+                            (y <- (any-char)))
+                      "ab")))
+  (5am:signals failure
+    (parse (bind (x <- (specific-char #\a))
+                 (y <- (specific-char #\b)))
+           "aa"))
+  (multiple-value-bind (r s)
+      (parse (bind (any-char)) "a")
+    (declare (ignore r))
+    (5am:is (null s)))
+  (multiple-value-bind (r s)
+      (parse (bind (any-char) (any-char)) "abc")
+    (declare (ignore r))
+    (5am:is (eql #\c (car (parser-stream-car s))))))
 
 (5am:test result
   (5am:is (eql #\a (funcall (result #\a) nil))))
 
-(5am:test sequence
-  (5am:signals failure
-    (parse "a" (sequence)))
-  (5am:is (eql #\a (parse "a" (sequence (specific-char #\a)))))
-  (5am:signals failure
-    (parse "b" (sequence (specific-char #\a))))
-  (5am:is (eql #\a (parse "aa"
-                     (sequence (specific-char #\a)
-                               (specific-char #\a)))))
-  (5am:is (eql #\b (parse "ab"
-                     (sequence (specific-char #\a)
-                               (specific-char #\b))))))
-
 (5am:test choice
   (5am:signals failure
-    (parse "a" (choice)))
+    (parse (choice) "a"))
+  (5am:is (eql #\a (parse (choice (specific-char #\a)) "a")))
+  (5am:is (eql #\b (parse (choice (specific-char #\b)) "b")))
   (5am:signals failure
-    (parse "b" (choice (specific-char #\a))))
-  (5am:is (eql #\a (parse "a" (choice (specific-char #\a)))))
-  (5am:is (eql #\a (parse "a"
-                     (choice (specific-char #\a)
-                             (specific-char #\b)))))
-  (5am:is (eql #\b (parse "b"
-                     (choice (specific-char #\a)
-                             (specific-char #\b)))))
+    (parse (choice (specific-char #\a)) "b"))
+  (5am:is (eql #\a
+               (parse (choice (specific-char #\a)
+                              (specific-char #\b))
+                      "a")))
+  (5am:is (eql #\b
+               (parse (choice (specific-char #\a)
+                              (specific-char #\b))
+                      "b")))
   (5am:signals failure
-    (parse "c" (choice (specific-char #\a)
-                       (specific-char #\b)))))
+    (parse (choice (specific-char #\a)
+                   (specific-char #\b))
+           "c")))
 
 (5am:test fail
   (5am:signals failure (funcall (fail) nil)))
 
 (5am:test try
-  (5am:is (eql #\a (parse "a" (try (specific-char #\a)))))
+  (5am:is (eql #\a (parse (try (specific-char #\a)) "a")))
+  (5am:is (eql #\b (parse (try (specific-char #\b)) "b")))
   (5am:signals failure
-    (parse "b" (try (specific-char #\a)))))
+    (parse (try (specific-char #\a)) "b")))
 
 (5am:test many
-  (5am:is (equal '(#\a) (parse "a" (many (any-char)))))
-  (5am:is (equal '(#\b) (parse "b" (many (any-char)))))
+  (5am:is (equal '(#\a) (parse (many (any-char)) "a")))
+  (5am:is (equal '(#\b) (parse (many (any-char)) "b")))
   (let ((s (parser-stream "ab")))
     (multiple-value-bind (rv rs)
-        (parse s (many (specific-char #\b)))
+        (parse (many (specific-char #\b)) s)
       (declare (ignore rv))
       (5am:is (eq s rs)))
     (multiple-value-bind (rv rs)
-        (parse s (many (specific-char #\a)))
+        (parse (many (specific-char #\a)) s)
       (declare (ignore rv))
       (5am:is (eq (parser-stream-cdr s) rs)))))
 
@@ -82,17 +107,17 @@
 (5am:in-suite character)
 
 (5am:test specific-char
-  (5am:is (eql #\a (parse "a" (specific-char #\a))))
-  (5am:is (eql #\b (parse "b" (specific-char #\b))))
+  (5am:is (eql #\a (parse (specific-char #\a) "a")))
+  (5am:is (eql #\b (parse (specific-char #\b) "b")))
   (5am:signals failure
-    (parse "b" (specific-char #\a))))
+    (parse (specific-char #\a) "b")))
 
 (5am:test specific-string
-  (5am:is (equal "a" (parse "a" (specific-string "a"))))
-  (5am:is (equal "b" (parse "b" (specific-string "b"))))
+  (5am:is (equal "a" (parse (specific-string "a") "a")))
+  (5am:is (equal "b" (parse (specific-string "b") "b")))
   (5am:signals failure
-    (parse "b" (specific-string "a")))
-  (5am:is (equal "a" (parse "abc" (specific-string "a"))))
+    (parse (specific-string "a") "b"))
+  (5am:is (equal "a" (parse (specific-string "a") "abc")))
   (let ((s (parser-stream "string")))
     (handler-case (funcall (specific-string "strong") s)
       (parser-error (c)
@@ -102,113 +127,113 @@
                     (parser-error-stream c)))))))
 
 (5am:test one-of
-  (5am:is (eql #\a (parse "a" (one-of #\a))))
-  (5am:is (eql #\b (parse "b" (one-of #\b))))
+  (5am:is (eql #\a (parse (one-of #\a) "a")))
+  (5am:is (eql #\b (parse (one-of #\b) "b")))
   (5am:signals failure
-    (parse "b" (one-of #\a)))
-  (5am:is (eql #\a (parse "a" (one-of #\a #\b))))
-  (5am:is (eql #\b (parse "b" (one-of #\a #\b))))
+    (parse (one-of #\a) "b"))
+  (5am:is (eql #\a (parse (one-of #\a #\b) "a")))
+  (5am:is (eql #\b (parse (one-of #\a #\b) "b")))
   (5am:signals failure
-    (parse "c" (one-of #\a #\b))))
+    (parse (one-of #\a #\b) "c")))
 
 (5am:test none-of
-  (5am:is (eql #\a (parse "a" (none-of #\b))))
-  (5am:is (eql #\b (parse "b" (none-of #\c))))
+  (5am:is (eql #\a (parse (none-of #\b) "a")))
+  (5am:is (eql #\b (parse (none-of #\c) "b")))
   (5am:signals failure
-    (parse "a" (none-of #\a)))
-  (5am:is (eql #\a (parse "a" (none-of #\b #\c))))
-  (5am:is (eql #\b (parse "b" (none-of #\a #\c))))
+    (parse (none-of #\a) "a"))
+  (5am:is (eql #\a (parse (none-of #\b #\c) "a")))
+  (5am:is (eql #\b (parse (none-of #\a #\c) "b")))
   (5am:signals failure
-    (parse "b" (none-of #\a #\b))))
+    (parse (none-of #\a #\b) "b")))
 
 (5am:test any-char
-  (5am:is (eql #\a (parse "a" (any-char))))
-  (5am:is (eql #\Space (parse " " (any-char)))))
+  (5am:is (eql #\a (parse (any-char) "a")))
+  (5am:is (eql #\Space (parse (any-char) " "))))
 
 (5am:test upper
-  (5am:is (eql #\A (parse "A" (upper))))
-  (5am:is (eql #\B (parse "B" (upper))))
+  (5am:is (eql #\A (parse (upper) "A")))
+  (5am:is (eql #\B (parse (upper) "B")))
   (5am:signals failure
-    (parse "a" (upper))))
+    (parse (upper) "a")))
 
 (5am:test lower
-  (5am:is (eql #\a (parse "a" (lower))))
-  (5am:is (eql #\b (parse "b" (lower))))
+  (5am:is (eql #\a (parse (lower) "a")))
+  (5am:is (eql #\b (parse (lower) "b")))
   (5am:signals failure
-    (parse "A" (lower))))
+    (parse (lower) "A")))
 
 (5am:test letter
-  (5am:is (eql #\a (parse "a" (letter))))
-  (5am:is (eql #\A (parse "A" (letter))))
+  (5am:is (eql #\a (parse (letter) "a")))
+  (5am:is (eql #\A (parse (letter) "A")))
   (5am:signals failure
-    (parse "!" (letter))))
+    (parse (letter) "!")))
 
 (5am:test alpha-num
-  (5am:is (eql #\a (parse "a" (alpha-num))))
-  (5am:is (eql #\0 (parse "0" (alpha-num))))
+  (5am:is (eql #\a (parse (alpha-num) "a")))
+  (5am:is (eql #\0 (parse (alpha-num) "0")))
   (5am:signals failure
-    (parse " " (alpha-num))))
+    (parse (alpha-num) " ")))
 
 (5am:test digit
-  (5am:is (eql #\0 (parse "0" (digit))))
-  (5am:is (eql #\1 (parse "1" (digit))))
-  (5am:is (eql #\f (parse "f" (digit 16))))
+  (5am:is (eql #\0 (parse (digit) "0")))
+  (5am:is (eql #\1 (parse (digit) "1")))
+  (5am:is (eql #\f (parse (digit 16) "f")))
   (5am:signals failure
-    (parse "a" (digit)))
+    (parse (digit) "a"))
   (5am:signals failure
-    (parse "g" (digit 16))))
+    (parse (digit 16) "g")))
 
 (5am:test hex-digit
-  (5am:is (eql #\0 (parse "0" (hex-digit))))
-  (5am:is (eql #\a (parse "a" (hex-digit))))
-  (5am:is (eql #\F (parse "F" (hex-digit))))
+  (5am:is (eql #\0 (parse (hex-digit) "0")))
+  (5am:is (eql #\a (parse (hex-digit) "a")))
+  (5am:is (eql #\F (parse (hex-digit) "F")))
   (5am:signals failure
-    (parse "g" (hex-digit))))
+    (parse (hex-digit) "g")))
 
 (5am:test oct-digit
-  (5am:is (eql #\0 (parse "0" (oct-digit))))
-  (5am:is (eql #\7 (parse "7" (oct-digit))))
+  (5am:is (eql #\0 (parse (oct-digit) "0")))
+  (5am:is (eql #\7 (parse (oct-digit) "7")))
   (5am:signals failure
-    (parse "8" (oct-digit))))
+    (parse (oct-digit) "8")))
 
 (5am:test newline
-  (5am:is (eql #\Newline (parse "
-" (newline))))
+  (5am:is (eql #\Newline (parse (newline) "
+")))
   (5am:signals failure
-    (parse "a" (newline))))
+    (parse (newline) "a")))
 
 (5am:test tab
-  (5am:is (eql #\Tab (parse "	" (tab))))
+  (5am:is (eql #\Tab (parse (tab) "	")))
   (5am:signals failure
-    (parse "a" (tab))))
+    (parse (tab) "a")))
 
 (5am:test space
-  (5am:is (eql #\Space (parse " " (space))))
-  (5am:is (eql #\Page (parse "" (space))))
-  (5am:is (eql #\Tab (parse "	" (space))))
-  (5am:is (eql #\Newline (parse "
-" (space))))
+  (5am:is (eql #\Space (parse (space) " ")))
+  (5am:is (eql #\Page (parse (space) "")))
+  (5am:is (eql #\Tab (parse (space) "	")))
+  (5am:is (eql #\Newline (parse (space) "
+")))
   (5am:signals failure
-    (parse "a" (space))))
+    (parse (space) "a")))
 
 (5am:test spaces
-  (5am:is (eq nil (parse "" (spaces))))
+  (5am:is (eq nil (parse (spaces) "")))
   (let ((s (parser-stream " ")))
     (5am:is (eq (parser-stream-cdr s)
                 (multiple-value-bind (rv rs)
-                    (parse s (spaces))
+                    (parse (spaces) s)
                   (declare (ignore rv))
                   rs))))
   (let ((s (parser-stream " a")))
     (5am:is (eq (parser-stream-cdr s)
                 (multiple-value-bind (rv rs)
-                    (parse s (spaces))
+                    (parse (spaces) s)
                   (declare (ignore rv))
                   rs))))
   (let ((s (parser-stream "  a")))
     (5am:is (eq (parser-stream-cdr
                  (parser-stream-cdr s))
                 (multiple-value-bind (rv rs)
-                    (parse s (spaces))
+                    (parse (spaces) s)
                   (declare (ignore rv))
                   rs)))))

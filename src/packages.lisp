@@ -2,6 +2,7 @@
   (:use :cl)
   (:import-from :alexandria :curry :rcurry :with-gensyms :once-only)
   (:import-from :anaphora :aif :it)
+  (:import-from :fare-matcher :match)
   (:export :make-parser-stream
            :parser-stream/string
            :parser-stream
@@ -23,8 +24,8 @@
            :with-no-consumption/failure
 
            :parse
+           :bind
            :result
-           :sequence
            :choice
            :fail
            :fail/unexpected

@@ -88,47 +88,33 @@
 
 ;;;; Primitive
 
-(defmacro parse (data &body parsers)
-  (check-type parsers cons)
+(defun parse (parser stream)
+  (funcall parser
+           (if (parser-stream-p stream)
+               stream
+               (parser-stream stream))))
+
+(defmacro bind (&rest parsers)
   (with-gensyms (stream ignore)
-    (labels ((binding-p (x)
-               (and (consp x)
-                    (symbolp (cadr x))
-                    (equal (symbol-name (cadr x)) "<-")))
-             (rec (rest)
-               (cond ((null (cdr rest))
-                      `(funcall ,(car rest) ,stream))
-                     ((binding-p (car rest))
-                      `(multiple-value-bind (,(caar rest) ,stream)
-                           (funcall ,@(cddar rest) ,stream)
-                         ,(rec (cdr rest))))
-                     (t
-                      `(multiple-value-bind (,ignore ,stream)
-                           (funcall ,(car rest) ,stream)
-                         (declare (ignore ,ignore))
-                         ,(rec (cdr rest)))))))
-      (once-only (data)
-        `(let ((,stream (if (parser-stream-p ,data)
-                            ,data
-                            (parser-stream ,data))))
-           ,(rec parsers))))))
+    (labels ((rec (rest)
+               (match rest
+                 ((and (list (list x <- y))
+                       (when (equal (symbol-name <-) "<-")))
+                  `(funcall ,y ,stream))
+                 ((list x) `(funcall ,x ,stream))
+                 ((and (cons (list x <- y) z)
+                       (when (equal (symbol-name <-) "<-")))
+                  `(multiple-value-bind (,x ,stream) (funcall ,y ,stream)
+                     ,(rec z)))
+                 ((cons x y)
+                  `(multiple-value-bind (,ignore ,stream) (funcall ,x ,stream)
+                     (declare (ignore ,ignore))
+                     ,(rec y))))))
+      `(lambda (,stream) ,(rec parsers)))))
 
 (defun result (x)
   (lambda (stream)
     (values x stream)))
-
-(defun sequence (&rest parsers)
-  (lambda (stream)
-    (labels ((rec (rest stream)
-               (if (cdr rest)
-                   (multiple-value-bind (_ next-stream)
-                       (funcall (car rest) stream)
-                     (declare (ignore _))
-                     (rec (cdr rest) next-stream))
-                   (funcall (car rest) stream))))
-      (if parsers
-          (rec parsers stream)
-          (funcall (fail) stream)))))
 
 (defun choice (&rest parsers)
   (lambda (stream)
@@ -196,14 +182,12 @@
 ;;;; Combinator
 
 (defun many1 (parser)
-  (lambda (stream)
-    (parse stream
-      (r  <- parser)
-      (rs <- (many parser))
-      (result (cons r rs)))))
+  (bind (r  <- parser)
+        (rs <- (many parser))
+        (result (cons r rs))))
 
 (defun skip-many1 (parser)
-  (sequence parser (skip-many parser)))
+  (bind parser (skip-many parser)))
 
 ;;;; Character
 
