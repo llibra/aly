@@ -228,31 +228,21 @@
 (defun specific-string (string)
   (lambda (stream)
     (values string
-            (reduce (lambda (s x)
-                      (funcall (specific-char x) s)
-                      (parser-stream-cdr s))
+            (reduce (lambda (s0 x)
+                      (multiple-value-bind (_ s1)
+                          (funcall (specific-char x) s0)
+                        (declare (ignore _))
+                        s1))
                     string
                     :initial-value stream))))
 
-(labels ((rec (item last-item rest acc)
-           (cond ((null rest) (nreverse acc))
-                 ((cdr rest)
-                  (rec item last-item (cdr rest)
-                       (cons (car rest) (cons item acc))))
-                 (t
-                  (rec item last-item (cdr rest)
-                       (cons (car rest) (cons last-item acc))))))
-         (intersperse (item list &optional (last-item item))
-           (etypecase list
-             (null nil)
-             (cons (rec item last-item (cdr list) (list (car list)))))))
-  (defun one-of (&rest cs)
-    (expect (satisfy (rcurry #'member cs))
-            (format nil "one of ~{~A~}" (intersperse ", " cs " and "))))
+(defun one-of (&rest cs)
+  (expect (satisfy (rcurry #'member cs))
+          (format nil "one of ~{~A~}" (intersperse ", " cs " and "))))
 
-  (defun none-of (&rest cs)
-    (expect (satisfy (complement (rcurry #'member cs)))
-            (format nil "except any of ~{~A~}" (intersperse ", " cs " and ")))))
+(defun none-of (&rest cs)
+  (expect (satisfy (complement (rcurry #'member cs)))
+          (format nil "except any of ~{~A~}" (intersperse ", " cs " and "))))
 
 (defun any-char ()
   (satisfy (constantly t)))

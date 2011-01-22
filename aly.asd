@@ -9,4 +9,5 @@
   :components ((:module "src"
                         :serial t
                         :components ((:file "packages")
+                                     (:file "util")
                                      (:file "parser")))))
