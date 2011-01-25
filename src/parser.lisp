@@ -181,6 +181,15 @@
 
 ;;;; Combinator
 
+(defun sep-by (parser sep)
+  (choice (sep-by1 parser sep)
+          (result nil)))
+
+(defun sep-by1 (parser sep)
+  (bind (x  <- parser)
+        (xs <- (many (bind sep parser)))
+        (result (cons x xs))))
+
 (defun many1 (parser)
   (bind (r  <- parser)
         (rs <- (many parser))
