@@ -21,8 +21,6 @@
            :failure/expected
            :failure-expected
 
-           :with-no-consumption/failure
-
            :parse
            :bind
            :result

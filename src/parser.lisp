@@ -78,16 +78,6 @@
                  (format s "Parser is expecting ~A, but encountered unexpected end of stream."
                          (failure-expected c))))))
 
-;;;; Utility
-
-(defmacro with-no-consumption/failure ((stream) &body body)
-  (with-gensyms (condition)
-    `(handler-case
-         (progn ,@body)
-       (failure (,condition)
-         (setf (parser-error-stream ,condition) ,stream)
-         (error ,condition)))))
-
 ;;;; Primitive
 
 (defun parse (parser stream)
@@ -145,8 +135,10 @@
 
 (defun try (parser)
   (lambda (stream)
-    (with-no-consumption/failure (stream)
-      (funcall parser stream))))
+    (handler-case (funcall parser stream)
+      (failure (c)
+        (setf (parser-error-stream c) stream)
+        (error c)))))
 
 (defun expect (parser x)
   (lambda (stream)
