@@ -34,6 +34,8 @@
 (defun parser-stream-car (stream)
   (car stream))
 
+(declaim (inline parser-stream-cdr))
+
 (defun parser-stream-cdr (stream)
   (if (functionp (cdr stream))
       (aif (funcall (cdr stream))
