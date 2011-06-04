@@ -21,12 +21,14 @@
            :failure/expected
            :failure-expected
 
+           :define-parser
+
            :parse
            :seq
            :seq1
            :seqn
            :seq/bind
-           :result
+           :pure
            :choice
            :fail
            :fail/unexpected

@@ -78,8 +78,8 @@
     (declare (ignore r))
     (5am:is (eql #\c (car (parser-stream-car s))))))
 
-(5am:test result
-  (5am:is (eql #\a (funcall (result #\a) nil))))
+(5am:test pure
+  (5am:is (eql #\a (funcall (pure #\a) nil))))
 
 (5am:test choice
   (5am:signals failure

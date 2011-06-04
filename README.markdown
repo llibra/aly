@@ -26,6 +26,8 @@ At first, need to load aly.
 最初にalyを読み込みます。
 
     (asdf:load-system :aly)
+    (defpackage :aly.demo (:use :cl :aly))
+    (in-package :aly.demo)
 
 Next, definition of parsers. A parser takes stream as argument, and returns
 result and next stream as multiple values.
@@ -33,65 +35,33 @@ result and next stream as multiple values.
 パーサを定義します。パーサはストリームを引数に取り、結果と処理後のストリームを多
 値で返します。
 
-    (defun additive ()
-      (flet ((f1 (stream)
-               (aly:parse stream
-                 (x <- (multitive))
-                 (aly:specific-char #\+)
-                 (y <- (additive))
-                 (aly:result (+ x y))))
-             (f2 (stream)
-               (aly:parse stream
-                 (x <- (multitive))
-                 (aly:specific-char #\-)
-                 (y <- (additive))
-                 (aly:result (- x y)))))
-        (aly:choice (aly:try #'f1)
-                    (aly:try #'f2)
-                    (multitive))))
+    (define-parser quoted
+      (many (choice (none-of #\")
+                    (seqn (specific-char #\")
+                          (specific-char #\")))))
     
-    (defun multitive ()
-      (flet ((f1 (stream)
-               (aly:parse stream
-                 (x <- (primary))
-                 (aly:specific-char #\*)
-                 (y <- (multitive))
-                 (aly:result (* x y))))
-             (f2 (stream)
-               (aly:parse stream
-                 (x <- (primary))
-                 (aly:specific-char #\/)
-                 (y <- (multitive))
-                 (aly:result (/ x y)))))
-        (aly:choice (aly:try #'f1)
-                    (aly:try #'f2)
-                    (primary))))
+    (define-parser field
+      (choice (seq/bind (specific-char #\")
+                        (x <- #'quoted)
+                        (specific-char #\")
+                        (pure (coerce x 'string)))
+              (seq/bind (x <- (many (none-of #\, #\Newline)))
+                        (pure (coerce x 'string)))))
     
-    (defun primary ()
-      (flet ((f (stream)
-               (aly:parse stream
-                 (aly:specific-char #\()
-                 (r <- (additive))
-                 (aly:specific-char #\))
-                 (aly:result r))))
-        (aly:choice (aly:try #'f) (decimal))))
+    (define-parser record
+      (sep-by #'field (specific-char #\,)))
     
-    (defun decimal ()
-      (lambda (stream)
-        (aly:parse stream
-          (c <- (aly:digit))
-          (aly:result (read-from-string (princ-to-string c))))))
+    (define-parser csv
+      (seq/bind (x <- #'record)
+                (y <- (many (seqn (specific-char #\Newline) #'record)))
+                (pure (cons x y))))
 
 Let's run parser.
 
 パーサを実行します。
 
-    (aly:parse "1+2" (additive))
-    ;; =>  3, NIL
-    (aly:parse "4*2-((3+1)-(9/3))*2" (additive))
-    ;; =>  6, NIL
-    (aly:parse "4**2-3/5" (additive))
-    ;; =>  4, ((#\* . 1) (#\* . 2) ...)
+    (parse #'csv (format nil "a,b,c~%d,e,f~%g,h,i"))
+    ;;=> (("a" "b" "c") ("d" "e" "f") ("g" "h" "i")), NIL
 
 No documentation yet. Please refer to tests in t/ for how to use each functions.
 
