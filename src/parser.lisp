@@ -94,8 +94,8 @@
                (parser-stream stream))))
 
 (defun pure (x)
-  (lambda (stream)
-    (values x stream)))
+  #'(lambda (stream)
+      (values x stream)))
 
 (defun seq (&rest parsers)
   (labels ((rec (rest stream value)
@@ -147,52 +147,52 @@
                   `(multiple-value-bind (,ignore ,stream) (funcall ,x ,stream)
                      (declare (ignore ,ignore))
                      ,(rec y))))))
-      `(lambda (,stream) ,(rec parsers)))))
+      `#'(lambda (,stream) ,(rec parsers)))))
 
 (defun choice (&rest parsers)
-  (lambda (stream)
-    (labels ((rec (rest stream)
-               (if rest
-                   (handler-case (funcall (car rest) stream)
-                     (failure (c)
-                       (if (eq stream (parser-error-stream c))
-                           (rec (cdr rest) stream)
-                           (error c))))
-                   (funcall (fail) stream))))
-      (rec parsers stream))))
+  #'(lambda (stream)
+      (labels ((rec (rest stream)
+                 (if rest
+                     (handler-case (funcall (car rest) stream)
+                       (failure (c)
+                         (if (eq stream (parser-error-stream c))
+                             (rec (cdr rest) stream)
+                             (error c))))
+                     (funcall (fail) stream))))
+        (rec parsers stream))))
 
 (defun fail (&optional (ctrl "Parser failed.") &rest args)
-  (lambda (stream)
-    (error 'simple-failure :stream stream :control ctrl :arguments args)))
+  #'(lambda (stream)
+      (error 'simple-failure :stream stream :control ctrl :arguments args)))
 
 (defun fail/unexpected (x)
-  (lambda (stream)
-    (error 'failure/unexpected
-           :stream stream
-           :datum x
-           :position (if stream
-                         (cdr (parser-stream-car stream))
-                         "end of stream"))))
+  #'(lambda (stream)
+      (error 'failure/unexpected
+             :stream stream
+             :datum x
+             :position (if stream
+                           (cdr (parser-stream-car stream))
+                           "end of stream"))))
 
 (defun try (parser)
-  (lambda (stream)
-    (handler-case (funcall parser stream)
-      (failure (c)
-        (setf (parser-error-stream c) stream)
-        (error c)))))
+  #'(lambda (stream)
+      (handler-case (funcall parser stream)
+        (failure (c)
+          (setf (parser-error-stream c) stream)
+          (error c)))))
 
 (defun expect (parser x)
-  (lambda (stream)
-    (handler-case (funcall parser stream)
-      (failure/expected (c)
-        (setf (failure-expected c) x)
-        (error c))
-      (failure (c)
-        (error 'failure/expected
-               :stream (parser-error-stream c)
-               :datum (failure-datum c)
-               :position (failure-position c)
-               :expected x)))))
+  #'(lambda (stream)
+      (handler-case (funcall parser stream)
+        (failure/expected (c)
+          (setf (failure-expected c) x)
+          (error c))
+        (failure (c)
+          (error 'failure/expected
+                 :stream (parser-error-stream c)
+                 :datum (failure-datum c)
+                 :position (failure-position c)
+                 :expected x)))))
 
 (defun %many (accum parser stream)
   (labels ((rec (stream acc)
@@ -205,14 +205,14 @@
     (rec stream nil)))
 
 (defun many (parser)
-  (lambda (stream)
-    (multiple-value-bind (r s)
-        (%many #'cons parser stream)
-      (values (nreverse r) s))))
+  #'(lambda (stream)
+      (multiple-value-bind (r s)
+          (%many #'cons parser stream)
+        (values (nreverse r) s))))
 
 (defun skip-many (parser)
-  (lambda (stream)
-    (%many (constantly nil) parser stream)))
+  #'(lambda (stream)
+      (%many (constantly nil) parser stream)))
 
 (define-parser eof
   #'(lambda (stream)
@@ -242,33 +242,33 @@
 ;;;; Character
 
 (defun satisfy (pred)
-  (lambda (stream)
-    (unless stream
-      (error 'failure/unexpected
-             :stream stream
-             :datum nil
-             :position "end of stream"))
-    (let ((token (parser-stream-car stream)))
-      (if (funcall pred (car token))
-          (values (car token) (parser-stream-cdr stream))
-          (error 'failure/unexpected
-                 :stream stream
-                 :datum (car token)
-                 :position (cdr token))))))
+  #'(lambda (stream)
+      (unless stream
+        (error 'failure/unexpected
+               :stream stream
+               :datum nil
+               :position "end of stream"))
+      (let ((token (parser-stream-car stream)))
+        (if (funcall pred (car token))
+            (values (car token) (parser-stream-cdr stream))
+            (error 'failure/unexpected
+                   :stream stream
+                   :datum (car token)
+                   :position (cdr token))))))
 
 (defun specific-char (c)
   (expect (satisfy (curry #'eql c)) c))
 
 (defun specific-string (string)
-  (lambda (stream)
-    (values string
-            (reduce (lambda (s0 x)
-                      (multiple-value-bind (_ s1)
-                          (funcall (specific-char x) s0)
-                        (declare (ignore _))
-                        s1))
-                    string
-                    :initial-value stream))))
+  #'(lambda (stream)
+      (values string
+              (reduce (lambda (s0 x)
+                        (multiple-value-bind (_ s1)
+                            (funcall (specific-char x) s0)
+                          (declare (ignore _))
+                          s1))
+                      string
+                      :initial-value stream))))
 
 (defun one-of (&rest cs)
   (expect (satisfy (rcurry #'member cs))
@@ -309,9 +309,9 @@
   (expect (specific-char #\Tab) "a tab"))
 
 (defun space ()
-  (expect (satisfy (lambda (c)
-                     (some (curry #'eql c)
-                           '(#\Space #\Page #\Tab #\Newline))))
+  (expect (satisfy #'(lambda (c)
+                       (some (curry #'eql c)
+                             '(#\Space #\Page #\Tab #\Newline))))
           "a space"))
 
 (defun spaces ()
