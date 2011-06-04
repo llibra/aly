@@ -36,6 +36,7 @@
            :expect
            :many
            :skip-many
+           :eof
 
            :sep-by
            :sep-by1

@@ -93,6 +93,10 @@
                stream
                (parser-stream stream))))
 
+(defun pure (x)
+  (lambda (stream)
+    (values x stream)))
+
 (defun seq (&rest parsers)
   (labels ((rec (rest stream value)
              (if rest
@@ -144,10 +148,6 @@
                      (declare (ignore ,ignore))
                      ,(rec y))))))
       `(lambda (,stream) ,(rec parsers)))))
-
-(defun pure (x)
-  (lambda (stream)
-    (values x stream)))
 
 (defun choice (&rest parsers)
   (lambda (stream)
@@ -213,6 +213,12 @@
 (defun skip-many (parser)
   (lambda (stream)
     (%many (constantly nil) parser stream)))
+
+(define-parser eof
+  #'(lambda (stream)
+      (if stream
+          (funcall (fail "Parser is expecting end of stream.") stream)
+          (values nil stream))))
 
 ;;;; Combinator
 
