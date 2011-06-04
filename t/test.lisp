@@ -16,45 +16,65 @@
   (5am:is (eql #\a (parse (any-char) "a")))
   (5am:is (eql #\b (parse (any-char) "b"))))
 
-(5am:test bind
-  (5am:is (eql #\a (parse (bind (any-char)) "a")))
-  (5am:is (eql #\b (parse (bind (any-char)) "b")))
+(5am:test seq
+  (5am:is (eq nil (parse (seq) "a")))
+  (5am:is (equal '(#\a) (parse (seq (any-char)) "a")))
+  (5am:is (equal '(#\b) (parse (seq (any-char)) "b")))
+  (5am:is (equal '(#\a #\b) (parse (seq (any-char) (any-char)) "ab")))
+  (5am:is (equal '(#\b #\a) (parse (seq (any-char) (any-char)) "ba"))))
+
+(5am:test seq1
+  (5am:is (eq nil (parse (seq1) "a")))
+  (5am:is (eql #\a (parse (seq1 (any-char)) "a")))
+  (5am:is (eql #\b (parse (seq1 (any-char)) "b")))
+  (5am:is (eql #\a (parse (seq1 (any-char) (any-char)) "ab")))
+  (5am:is (eql #\b (parse (seq1 (any-char) (any-char)) "ba"))))
+
+(5am:test seqn
+  (5am:is (eq nil (parse (seqn) "a")))
+  (5am:is (eql #\a (parse (seqn (any-char)) "a")))
+  (5am:is (eql #\b (parse (seqn (any-char)) "b")))
+  (5am:is (eql #\b (parse (seqn (any-char) (any-char)) "ab"))))
+
+(5am:test seq/bind
+  (5am:is (eql #\a (parse (seq/bind (any-char)) "a")))
+  (5am:is (eql #\b (parse (seq/bind (any-char)) "b")))
   (5am:signals failure
-    (parse (bind (specific-char #\a)) "b"))
-  (5am:is (eql #\a (parse (bind (c <- (any-char))) "a")))
-  (5am:is (eql #\b (parse (bind (c <- (any-char))) "b")))
+    (parse (seq/bind (specific-char #\a)) "b"))
+  (5am:is (eql #\a (parse (seq/bind (c <- (any-char))) "a")))
+  (5am:is (eql #\b (parse (seq/bind (c <- (any-char))) "b")))
   (5am:signals failure
-    (parse (bind (c <- (specific-char #\a))) "b"))
+    (parse (seq/bind (c <- (specific-char #\a))) "b"))
   (5am:is (eql #\a
-               (parse (bind (any-char)
-                            (any-char))
+               (parse (seq/bind (any-char)
+                                (any-char))
                       "ba")))
   (5am:is (eql #\b
-               (parse (bind (any-char)
-                            (any-char))
+               (parse (seq/bind (any-char)
+                                (any-char))
                       "ab")))
   (5am:signals failure
-    (parse (bind (specific-char #\a)
-                 (specific-char #\b))
+    (parse (seq/bind (specific-char #\a)
+                     (specific-char #\b))
            "aa"))
   (5am:is (eql #\a
-               (parse (bind (x <- (any-char))
-                            (y <- (any-char)))
+               (parse (seq/bind (x <- (any-char))
+                                (y <- (any-char)))
                       "ba")))
   (5am:is (eql #\b
-               (parse (bind (x <- (any-char))
-                            (y <- (any-char)))
+               (parse (seq/bind (x <- (any-char))
+                                (y <- (any-char)))
                       "ab")))
   (5am:signals failure
-    (parse (bind (x <- (specific-char #\a))
-                 (y <- (specific-char #\b)))
+    (parse (seq/bind (x <- (specific-char #\a))
+                     (y <- (specific-char #\b)))
            "aa"))
   (multiple-value-bind (r s)
-      (parse (bind (any-char)) "a")
+      (parse (seq/bind (any-char)) "a")
     (declare (ignore r))
     (5am:is (null s)))
   (multiple-value-bind (r s)
-      (parse (bind (any-char) (any-char)) "abc")
+      (parse (seq/bind (any-char) (any-char)) "abc")
     (declare (ignore r))
     (5am:is (eql #\c (car (parser-stream-car s))))))
 

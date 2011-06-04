@@ -86,7 +86,41 @@
                stream
                (parser-stream stream))))
 
-(defmacro bind (&rest parsers)
+(defun seq (&rest parsers)
+  (labels ((rec (rest stream value)
+             (if rest
+                 (multiple-value-bind (x stream) (funcall (car rest) stream)
+                   (rec (cdr rest) stream (cons x value)))
+                 (values (nreverse value) stream))))
+    (if parsers
+        #'(lambda (stream) (rec parsers stream nil))
+        (result nil))))
+
+(labels ((rec (rest stream)
+           (destructuring-bind (parser . rest) rest
+             (if rest
+                 (multiple-value-bind (_ stream) (funcall parser stream)
+                   (declare (ignore _))
+                   (rec rest stream))
+                 (funcall parser stream)))))
+  (defun seq1 (&rest parsers)
+    (cond ((null parsers)
+           (result nil))
+          ((cdr parsers)
+           #'(lambda (stream)
+               (multiple-value-bind (x stream) (funcall (car parsers) stream)
+                 (multiple-value-bind (_ stream) (rec (cdr parsers) stream)
+                   (declare (ignore _))
+                   (values x stream)))))
+          (t
+           #'(lambda (stream) (funcall parser stream)))))
+
+  (defun seqn (&rest parsers)
+    (if parsers
+        #'(lambda (stream) (rec parsers stream))
+        (result nil))))
+
+(defmacro seq/bind (&rest parsers)
   (with-gensyms (stream ignore)
     (labels ((rec (rest)
                (match rest
@@ -180,17 +214,17 @@
           (result nil)))
 
 (defun sep-by1 (parser sep)
-  (bind (x  <- parser)
-        (xs <- (many (bind sep parser)))
-        (result (cons x xs))))
+  (seq/bind (x  <- parser)
+            (xs <- (many (seqn sep parser)))
+            (result (cons x xs))))
 
 (defun many1 (parser)
-  (bind (r  <- parser)
-        (rs <- (many parser))
-        (result (cons r rs))))
+  (seq/bind (r  <- parser)
+            (rs <- (many parser))
+            (result (cons r rs))))
 
 (defun skip-many1 (parser)
-  (bind parser (skip-many parser)))
+  (seqn parser (skip-many parser)))
 
 ;;;; Character
 

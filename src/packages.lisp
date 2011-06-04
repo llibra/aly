@@ -22,7 +22,10 @@
            :failure-expected
 
            :parse
-           :bind
+           :seq
+           :seq1
+           :seqn
+           :seq/bind
            :result
            :choice
            :fail
