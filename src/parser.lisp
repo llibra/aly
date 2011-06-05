@@ -13,21 +13,15 @@
        (cons (cons it 0) generator)
        nil))
 
-(defun parser-stream/string (string)
-  (let ((in (make-string-input-stream string)))
+(defmethod parser-stream ((x null)) nil)
+
+(defmethod parser-stream ((x string))
+  (let ((in (make-string-input-stream x)))
     (flet ((f ()
              (let ((c (read-char in nil)))
                (unless c (close in))
                c)))
       (make-parser-stream #'f))))
-
-(defun parser-stream (x)
-  (etypecase x
-    (string (parser-stream/string x))
-    (null nil)))
-
-(defun parser-stream-p (x)
-  (and (consp x) (consp (car x))))
 
 (declaim (inline parser-stream-car))
 
@@ -87,11 +81,8 @@
 
 ;;;; Primitive
 
-(defun parse (parser stream)
-  (funcall parser
-           (if (parser-stream-p stream)
-               stream
-               (parser-stream stream))))
+(defun parse (parser input)
+  (funcall parser (parser-stream input)))
 
 (defun pure (x)
   #'(lambda (stream)
