@@ -74,6 +74,15 @@
 
 ;;;; Macro
 
+(defmacro with-result-bind (vars form &body body)
+  `(multiple-value-bind ,vars ,form ,@body))
+
+(defmacro if-result/bind (vars form then &optional else)
+  (let ((type (if vars (car vars) (gensym))))
+    `(with-result-bind ,vars ,form
+       (declare (ignorable ,@vars))
+       (if (eq ,type :success) ,then ,else))))
+
 (defmacro define-parser (name &body body)
   `(progn
      (setf (symbol-function ',name) (progn ,@ body))
@@ -81,19 +90,61 @@
 
 ;;;; Primitive
 
-(defun parse (parser input)
-  (funcall parser (parser-stream input)))
+(declaim (inline result))
+(defun result (type value position expected stream)
+  (values type value position expected stream))
+
+(declaim (inline success))
+(defun success (&key value expected stream (position stream))
+  (result :success value position expected stream))
+
+(declaim (inline failure))
+(defun failure (&key expected stream (position stream))
+  (result :failure nil position expected stream))
+
+;; TODO: improve error handling
+(defun signal-parser-error (type value position expected stream)
+  (declare (ignore type position expected stream))
+  (values value nil))
+
+(defun parse (parser input &key (parser-error-p t))
+  (if-result/bind (type value position expected stream)
+                  (funcall parser (parser-stream input))
+                  (values value t)
+                  (if parser-error-p
+                      (signal-parser-error type value position expected stream)
+                      (values value nil))))
 
 (defun pure (x)
   #'(lambda (stream)
-      (values x stream)))
+      (success :value x :stream stream)))
+
+(defun satisfy (pred)
+  #'(lambda (stream)
+      (if stream
+          (let ((token (parser-stream-car stream)))
+            (if (funcall pred (car token))
+                (success :value (car token)
+                         :position stream
+                         :stream (parser-stream-cdr stream))
+                (failure :stream stream)))
+          (failure))))
+
+(defun bind (parser fn)
+  #'(lambda (stream)
+      (if-result/bind (type value position expected stream)
+                      (funcall parser stream)
+                      (funcall (funcall fn value) stream)
+                      (result type value position expected stream))))
 
 (defun seq (&rest parsers)
-  (labels ((rec (rest stream value)
+  (labels ((rec (rest stream result)
              (if rest
-                 (multiple-value-bind (x stream) (funcall (car rest) stream)
-                   (rec (cdr rest) stream (cons x value)))
-                 (values (nreverse value) stream))))
+                 (if-result/bind (type value position expected stream)
+                                 (funcall (car rest) stream)
+                                 (rec (cdr rest) stream (cons value result))
+                                 (result type value position expected stream))
+                 (success :value (nreverse result) :stream stream))))
     (if parsers
         #'(lambda (stream) (rec parsers stream nil))
         (pure nil))))
@@ -101,21 +152,26 @@
 (labels ((rec (rest stream)
            (destructuring-bind (parser . rest) rest
              (if rest
-                 (multiple-value-bind (_ stream) (funcall parser stream)
-                   (declare (ignore _))
-                   (rec rest stream))
+                 (if-result/bind (type value position expected stream)
+                                 (funcall parser stream)
+                                 (rec rest stream)
+                                 (result type value position expected stream))
                  (funcall parser stream)))))
   (defun seq1 (&rest parsers)
-    (cond ((null parsers)
-           (pure nil))
-          ((cdr parsers)
-           #'(lambda (stream)
-               (multiple-value-bind (x stream) (funcall (car parsers) stream)
-                 (multiple-value-bind (_ stream) (rec (cdr parsers) stream)
-                   (declare (ignore _))
-                   (values x stream)))))
-          (t
-           #'(lambda (stream) (funcall (car parsers) stream)))))
+    (if parsers
+        (destructuring-bind (parser . rest) parsers
+          (if rest
+              #'(lambda (stream)
+                  (if-result/bind
+                   (type value1 position expected stream)
+                   (funcall parser stream)
+                   (if-result/bind (type value position expected stream) 
+                                   (rec rest stream)
+                                   (result type value1 position expected stream)
+                                   (result type value position expected stream))
+                   (result type value1 position expected stream)))
+              #'(lambda (stream) (funcall parser stream))))
+        (pure nil)))
 
   (defun seqn (&rest parsers)
     (if parsers
@@ -123,34 +179,32 @@
         (pure nil))))
 
 (defmacro seq/bind (&rest parsers)
-  (with-gensyms (stream ignore)
-    (labels ((rec (rest)
+  (with-gensyms (_)
+    (labels ((<-p (s)
+               (equal (symbol-name s) "<-"))
+             (rec (rest)
                (match rest
-                 ((and (list (list x <- y))
-                       (when (equal (symbol-name <-) "<-")))
-                  `(funcall ,y ,stream))
-                 ((list x) `(funcall ,x ,stream))
-                 ((and (cons (list x <- y) z)
-                       (when (equal (symbol-name <-) "<-")))
-                  `(multiple-value-bind (,x ,stream) (funcall ,y ,stream)
-                     ,(rec z)))
+                 ((and (list (list x <- y)) (when (<-p <-))) y)
+                 ((list x) x)
+                 ((and (cons (list x <- y) z) (when (<-p <-)))
+                  `(bind ,y #'(lambda (,x) ,(rec z))))
                  ((cons x y)
-                  `(multiple-value-bind (,ignore ,stream) (funcall ,x ,stream)
-                     (declare (ignore ,ignore))
-                     ,(rec y))))))
-      `#'(lambda (,stream) ,(rec parsers)))))
+                  `(bind ,x #'(lambda (,_) (declare (ignore ,_)) ,(rec y)))))))
+      (if parsers (rec parsers) '(pure nil)))))
+
+(defun choice2 (parser1 parser2)
+  #'(lambda (stream)
+      (if-result/bind (type value position expected stream1)
+                      (funcall parser1 stream)
+                      (result type value position expected stream1)
+                      (if (eq stream1 stream)
+                          (funcall parser2 stream1)
+                          (result type value position expected stream1)))))
 
 (defun choice (&rest parsers)
-  #'(lambda (stream)
-      (labels ((rec (rest stream)
-                 (if rest
-                     (handler-case (funcall (car rest) stream)
-                       (failure (c)
-                         (if (eq stream (parser-error-stream c))
-                             (rec (cdr rest) stream)
-                             (error c))))
-                     (funcall (fail) stream))))
-        (rec parsers stream))))
+  (if parsers
+      (reduce #'choice2 parsers)
+      (pure nil)))
 
 (defun fail (&optional (ctrl "Parser failed.") &rest args)
   #'(lambda (stream)
@@ -185,25 +239,25 @@
                  :position (failure-position c)
                  :expected x)))))
 
-(defun %many (accum parser stream)
-  (labels ((rec (stream acc)
-             (handler-case
-                 (multiple-value-bind (r s) (funcall parser stream)
-                   (rec s (funcall accum r acc)))
-               (failure (c)
-                 (declare (ignore c))
-                 (values acc stream)))))
-    (rec stream nil)))
+(defun many-common (accum parser stream0)
+  (labels ((rec (stream result)
+             (if-result/bind (type value position expected stream1)
+                             (funcall parser stream)
+                             (rec stream1 (funcall accum value result))
+                             (success :value result
+                                      :position stream0
+                                      :stream stream))))
+    (rec stream0 nil)))
 
 (defun many (parser)
   #'(lambda (stream)
-      (multiple-value-bind (r s)
-          (%many #'cons parser stream)
-        (values (nreverse r) s))))
+      (with-result-bind (type value position expected stream)
+          (many-common #'cons parser stream)
+        (result type (nreverse value) position expected stream))))
 
 (defun skip-many (parser)
   #'(lambda (stream)
-      (%many (constantly nil) parser stream)))
+      (many-common (constantly nil) parser stream)))
 
 (define-parser eof
   #'(lambda (stream)
@@ -231,21 +285,6 @@
   (seqn parser (skip-many parser)))
 
 ;;;; Character
-
-(defun satisfy (pred)
-  #'(lambda (stream)
-      (unless stream
-        (error 'failure/unexpected
-               :stream stream
-               :datum nil
-               :position "end of stream"))
-      (let ((token (parser-stream-car stream)))
-        (if (funcall pred (car token))
-            (values (car token) (parser-stream-cdr stream))
-            (error 'failure/unexpected
-                   :stream stream
-                   :datum (car token)
-                   :position (cdr token))))))
 
 (defun specific-char (c)
   (expect (satisfy (curry #'eql c)) c))
