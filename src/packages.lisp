@@ -29,7 +29,7 @@
            :seq1
            :seqn
            :seq/bind
-           :pure
+           :unit
            :choice
            :fail
            :fail/unexpected

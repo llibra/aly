@@ -115,7 +115,7 @@
                       (signal-parser-error type value position expected stream)
                       (values value nil))))
 
-(defun pure (x)
+(defun unit (x)
   #'(lambda (stream)
       (success :value x :stream stream)))
 
@@ -147,7 +147,7 @@
                  (success :value (nreverse result) :stream stream))))
     (if parsers
         #'(lambda (stream) (rec parsers stream nil))
-        (pure nil))))
+        (unit nil))))
 
 (labels ((rec (rest stream)
            (destructuring-bind (parser . rest) rest
@@ -171,12 +171,12 @@
                                    (result type value position expected stream))
                    (result type value1 position expected stream)))
               #'(lambda (stream) (funcall parser stream))))
-        (pure nil)))
+        (unit nil)))
 
   (defun seqn (&rest parsers)
     (if parsers
         #'(lambda (stream) (rec parsers stream))
-        (pure nil))))
+        (unit nil))))
 
 (defmacro seq/bind (&rest parsers)
   (with-gensyms (_)
@@ -190,7 +190,7 @@
                   `(bind ,y #'(lambda (,x) ,(rec z))))
                  ((cons x y)
                   `(bind ,x #'(lambda (,_) (declare (ignore ,_)) ,(rec y)))))))
-      (if parsers (rec parsers) '(pure nil)))))
+      (if parsers (rec parsers) '(unit nil)))))
 
 (defun choice2 (parser1 parser2)
   #'(lambda (stream)
@@ -204,7 +204,7 @@
 (defun choice (&rest parsers)
   (if parsers
       (reduce #'choice2 parsers)
-      (pure nil)))
+      (unit nil)))
 
 (defun fail (&optional (ctrl "Parser failed.") &rest args)
   #'(lambda (stream)
@@ -269,17 +269,17 @@
 
 (defun sep-by (parser sep)
   (choice (sep-by1 parser sep)
-          (pure nil)))
+          (unit nil)))
 
 (defun sep-by1 (parser sep)
   (seq/bind (x  <- parser)
             (xs <- (many (seqn sep parser)))
-            (pure (cons x xs))))
+            (unit (cons x xs))))
 
 (defun many1 (parser)
   (seq/bind (r  <- parser)
             (rs <- (many parser))
-            (pure (cons r rs))))
+            (unit (cons r rs))))
 
 (defun skip-many1 (parser)
   (seqn parser (skip-many parser)))

@@ -59,8 +59,8 @@
                                 (y <- #'any-char))
                       "ab"))))
 
-(5am:test pure
-  (5am:is (eql #\a (funcall (pure #\a) nil))))
+(5am:test unit
+  (5am:is (eql #\a (funcall (unit #\a) nil))))
 
 (5am:test choice
   (5am:is (eq nil (parse (choice) "a")))
