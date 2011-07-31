@@ -179,18 +179,28 @@
         (unit nil))))
 
 (defmacro seq/bind (&rest parsers)
-  (with-gensyms (_)
-    (labels ((<-p (s)
-               (equal (symbol-name s) "<-"))
-             (rec (rest)
-               (match rest
-                 ((and (list (list x <- y)) (when (<-p <-))) y)
-                 ((list x) x)
-                 ((and (cons (list x <- y) z) (when (<-p <-)))
-                  `(bind ,y #'(lambda (,x) ,(rec z))))
-                 ((cons x y)
-                  `(bind ,x #'(lambda (,_) (declare (ignore ,_)) ,(rec y)))))))
-      (if parsers (rec parsers) '(unit nil)))))
+  (with-gensyms (ignore)
+    (match parsers
+      (() '(unit nil))
+      (((var <- parser))
+       (if (string= <- "<-")
+           parser
+           `(,var ,<- ,parser)))
+      ((parser) parser)
+      (((var <- parser) . rest)
+       (if (string= <- "<-")
+           `(bind ,parser
+                  #'(lambda (,var)
+                      (seq/bind ,@rest)))
+           `(bind (,var ,<- ,parser)
+                  #'(lambda (,ignore)
+                      (declare (ignore ,ignore))
+                      (seq/bind ,@rest)))))
+      ((parser . rest)
+       `(bind ,parser
+              #'(lambda (,ignore)
+                  (declare (ignore ,ignore))
+                  (seq/bind ,@rest)))))))
 
 (defun choice2 (parser1 parser2)
   #'(lambda (stream)

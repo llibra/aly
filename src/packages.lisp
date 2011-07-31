@@ -2,7 +2,7 @@
   (:use :cl :iterate)
   (:import-from :alexandria :curry :rcurry :with-gensyms :once-only :ensure-car)
   (:import-from :anaphora :aif :it)
-  (:import-from :fare-matcher :match)
+  (:import-from :cl-pattern :match)
   (:export :make-parser-stream
            :parser-stream/string
            :parser-stream

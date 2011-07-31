@@ -5,7 +5,7 @@
   :version "0.1"
   :author "Manabu Takayama <learn.libra@gmail.com>"
   :licence "MIT License"
-  :depends-on (:iterate :alexandria :anaphora :fare-matcher)
+  :depends-on (:iterate :alexandria :anaphora :cl-pattern)
   :components ((:module "src"
                         :serial t
                         :components ((:file "packages")
