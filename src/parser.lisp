@@ -184,7 +184,7 @@
   #'(lambda (stream)
       (result-match (funcall parser stream)
         ((t value stream pos msgs)
-         (success values stream pos msgs))
+         (success value stream pos msgs))
         ((nil pos msgs)
          (if (eq pos stream)
              (failure pos msgs)
