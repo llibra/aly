@@ -4,7 +4,6 @@
   (:import-from :anaphora :aif :it)
   (:import-from :cl-pattern :match)
   (:export :make-parser-stream
-           :parser-stream/string
            :parser-stream
            :parser-stream-car
            :parser-stream-cdr
@@ -22,7 +21,6 @@
            :unit
            :choice
            :fail
-           :fail/unexpected
            :try
            :expect
            :many

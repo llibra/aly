@@ -24,12 +24,10 @@
       (make-parser-stream #'f))))
 
 (declaim (inline parser-stream-car))
-
 (defun parser-stream-car (stream)
   (car stream))
 
 (declaim (inline parser-stream-cdr))
-
 (defun parser-stream-cdr (stream)
   (if (functionp (cdr stream))
       (aif (funcall (cdr stream))
@@ -227,9 +225,9 @@
 
 (define-parser eof
   #'(lambda (stream)
-      (if stream
-          (funcall (fail "Parser is expecting end of stream.") stream)
-          (values nil stream))))
+      (match stream
+        (() (success nil stream))
+        (_ (failure stream (list "end of input"))))))
 
 ;;;; Combinator
 
