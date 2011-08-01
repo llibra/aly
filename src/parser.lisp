@@ -255,15 +255,21 @@
 
 ;; TODO: mreduce
 (defun specific-string (string)
-  #'(lambda (stream)
-      (values string
-              (reduce (lambda (s0 x)
-                        (multiple-value-bind (_ s1)
-                            (funcall (specific-char x) s0)
-                          (declare (ignore _))
-                          s1))
-                      string
-                      :initial-value stream))))
+  (labels ((rec (stream1 index)
+             (if (= index (length string))
+                 (success nil stream1)
+                 (result-match
+                     (funcall (specific-char (aref string index)) stream1)
+                   ((t _ stream2 _ _)
+                    (rec stream2 (1+ index)))
+                   ((nil pos msgs)
+                    (failure pos msgs))))))
+    #'(lambda (stream)
+        (result-match (rec stream 0)
+          ((t _ stream pos msgs)
+           (success string stream pos msgs))
+          ((nil pos msgs)
+           (failure pos msgs))))))
 
 (defun one-of (&rest cs)
   (expect (satisfy (rcurry #'member cs))
