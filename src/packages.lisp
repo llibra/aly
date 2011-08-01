@@ -10,16 +10,6 @@
            :parser-stream-cdr
 
            :parser-error
-           :parser-error-stream
-           :failure
-           :failure-datum
-           :failure-position
-           :simple-failure
-           :failure-control
-           :failure-arguments
-           :failure/unexpected
-           :failure/expected
-           :failure-expected
 
            :define-parser
 

@@ -41,36 +41,8 @@
 ;;;; Condition
 
 (define-condition parser-error (error)
-  ((stream :initarg :stream :accessor parser-error-stream)))
-
-(define-condition failure (parser-error)
-  ((datum :initarg :datum :reader failure-datum)
-   (position :initarg :position :reader failure-position)))
-
-(define-condition simple-failure (failure)
-  ((control :initarg :control :reader failure-control)
-   (arguments :initarg :arguments :reader failure-arguments))
-  (:report (lambda (c s)
-             (apply #'format s (failure-control c) (failure-arguments c)))))
-
-(define-condition failure/unexpected (failure) ()
-  (:report (lambda (c s)
-             (if (failure-datum c)
-                 (format s "Parser encounterd unexpected datum ~S at ~S."
-                         (failure-datum c)
-                         (failure-position c))
-                 (format s "Parser encountered unexpected end of stream.")))))
-
-(define-condition failure/expected (failure)
-  ((expected :initarg :expected :accessor failure-expected))
-  (:report (lambda (c s)
-             (if (failure-datum c)
-                 (format s "Parser is expecting ~A, but got ~S at ~S."
-                         (failure-expected c)
-                         (failure-datum c)
-                         (failure-position c))
-                 (format s "Parser is expecting ~A, but encountered unexpected end of stream."
-                         (failure-expected c))))))
+  ((stream :initarg :stream)
+   (position :initarg :position)))
 
 ;;;; Macro
 
@@ -97,8 +69,8 @@
 
 ;; TODO: improve error handling
 (defun signal-parser-error (stream pos msgs)
-  (declare (stream pos msgs))
-  (values nil nil))
+  (declare (ignore msgs))
+  (error 'parser-error :stream stream :position pos))
 
 (defun parse (parser input &key (parser-error-p t))
   (let ((stream (parser-stream input)))
