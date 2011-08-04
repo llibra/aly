@@ -44,10 +44,13 @@
 
 ;;;; Macro
 
+;;; TODO: Refactoring for speed
 (defmacro result-match (form &body clauses)
   (with-gensyms (values)
     `(let ((,values (multiple-value-list ,form)))
-       (declare (dynamic-extent ,values))
+       ;; The list is allocated in the heap for tail call optimization.
+       ;; But it will make this part slow.
+       ;(declare (dynamic-extent ,values))
        (match ,values ,@clauses))))
 
 (defmacro define-parser (name &body body)
