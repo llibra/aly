@@ -1,6 +1,6 @@
 (defpackage :aly
-  (:use :cl :iterate)
-  (:import-from :alexandria :curry :rcurry :with-gensyms :once-only :ensure-car)
+  (:use :cl)
+  (:import-from :alexandria :curry :rcurry :with-gensyms)
   (:import-from :anaphora :aif :it)
   (:import-from :cl-pattern :match)
   (:export :make-parser-stream
@@ -9,8 +9,6 @@
            :parser-stream-cdr
 
            :parser-error
-
-           :define-parser
 
            :parse
            :bind
