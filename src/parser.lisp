@@ -68,7 +68,7 @@
 (defun failure (&optional pos msgs)
   (values nil pos msgs))
 
-;; TODO: improve error handling
+;; TODO: Improving error handling
 (defun signal-parser-error (stream pos msgs)
   (declare (ignore msgs))
   (error 'parser-error :stream stream :position pos))
@@ -191,7 +191,7 @@
         ((nil pos msgs)
          (if (eq pos stream)
              (failure pos msgs)
-             ;; TODO: treat the position of failure
+             ;; TODO: Treating the position of failure
              (failure stream msgs))))))
 
 (defun expect (parser x)
@@ -206,7 +206,7 @@
              (failure pos (list x))
              (failure pos msgs))))))
 
-;; TODO: mreduce
+;; TODO: Refactoring
 (defun many-common (accum-fn parser stream0)
   (labels ((rec (stream accum)
              (result-match (funcall parser stream)
@@ -226,11 +226,10 @@
   #'(lambda (stream)
       (many-common (constantly nil) parser stream)))
 
-(define-parser eof
-  #'(lambda (stream)
-      (match stream
-        (() (success nil stream))
-        (_ (failure stream (list "end of input"))))))
+(defun eof (stream)
+  (match stream
+    (() (success nil stream))
+    (_ (failure stream (list "end of input")))))
 
 ;;;; Combinator
 
@@ -256,7 +255,7 @@
 (defun specific-char (c)
   (expect (satisfy (curry #'eql c)) c))
 
-;; TODO: mreduce
+;; TODO: Refactoring
 (defun specific-string (string)
   (labels ((rec (stream1 index)
              (if (= index (length string))
