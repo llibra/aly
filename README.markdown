@@ -4,9 +4,9 @@ aly - Trivial Lisp parser combinator library
 What is this?
 -------------
 
-Aly is parser combinator library. It's inspired by technical talk by Shikano
-Keiichirou in Shibuya.lisp TT #6. Uncompleted and experimental. Lazy stream is
-based on the idea from PEG module of Gauche.
+Aly is a parser combinator library. It's inspired by the technical talk by
+Shikano Keiichirou in Shibuya.lisp TT #6. Uncompleted and experimental. Lazy
+stream is based on the idea from PEG module of Gauche.
 
 パーサコンビネータライブラリです。Shibuya.lisp TT #6の鹿野さんの「多値で簡単パー
 サーコンビネーター」に影響されて作りました。遅延ストリームのアイデアは Gauche の
@@ -26,21 +26,20 @@ At first, need to load aly.
 最初にalyを読み込みます。
 
     (asdf:load-system :aly)
-    (defpackage :aly.demo (:use :cl :aly))
+    (defpackage :aly.demo (:use :cl :aly :aly.char))
     (in-package :aly.demo)
 
 Next, definition of parsers. A parser takes stream as argument, and returns
-result and next stream as multiple values.
+a result as multiple values.
 
-パーサを定義します。パーサはストリームを引数に取り、結果と処理後のストリームを多
-値で返します。
+パーサを定義します。パーサはストリームを引数に取り、結果を多値で返します。
 
-    (define-parser quoted
+    (setf (symbol-function 'quoted)
       (many (choice (none-of #\")
                     (seqn (specific-char #\")
                           (specific-char #\")))))
     
-    (define-parser field
+    (setf (symbol-function 'field)
       (choice (seq/bind (specific-char #\")
                         (x <- #'quoted)
                         (specific-char #\")
@@ -48,10 +47,10 @@ result and next stream as multiple values.
               (seq/bind (x <- (many (none-of #\, #\Newline)))
                         (pure (coerce x 'string)))))
     
-    (define-parser record
+    (setf (symbol-function 'record)
       (sep-by #'field (specific-char #\,)))
     
-    (define-parser csv
+    (setf (symbol-function 'csv)
       (seq/bind (x <- #'record)
                 (y <- (many (seqn (specific-char #\Newline) #'record)))
                 (pure (cons x y))))

@@ -1,4 +1,4 @@
-(in-package :aly)
+(in-package :aly.util)
 
 (defmacro defalias (name function-designator)
   (with-gensyms (function designator)
@@ -8,6 +8,15 @@
                            (symbol-function ,designator))))
        (setf (symbol-function ',name) ,function)
        ',name)))
+
+;;; TODO: Refactoring for speed
+(defmacro result-match (form &body clauses)
+  (with-gensyms (values)
+    `(let ((,values (multiple-value-list ,form)))
+       ;; The list is allocated in the heap for tail call optimization.
+       ;; But it will make this part slow.
+       ;(declare (dynamic-extent ,values))
+       (match ,values ,@clauses))))
 
 (defun intersperse (item list &optional (last-item item))
   (labels ((rec (rest acc)

@@ -9,8 +9,8 @@
 (5am:test parser-stream
   (5am:is (eq nil (parser-stream ""))))
 
-(5am:def-suite primitive :in all)
-(5am:in-suite primitive)
+(5am:def-suite core :in all)
+(5am:in-suite core)
 
 (5am:test parse
   (5am:is (eql #\a (parse #'any-char "a")))
