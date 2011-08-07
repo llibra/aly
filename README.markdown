@@ -43,9 +43,9 @@ a result as multiple values.
       (choice (seq/bind (specific-char #\")
                         (x <- #'quoted)
                         (specific-char #\")
-                        (pure (coerce x 'string)))
+                        (unit (coerce x 'string)))
               (seq/bind (x <- (many (none-of #\, #\Newline)))
-                        (pure (coerce x 'string)))))
+                        (unit (coerce x 'string)))))
     
     (setf (symbol-function 'record)
       (sep-by #'field (specific-char #\,)))
@@ -53,7 +53,7 @@ a result as multiple values.
     (setf (symbol-function 'csv)
       (seq/bind (x <- #'record)
                 (y <- (many (seqn (specific-char #\Newline) #'record)))
-                (pure (cons x y))))
+                (unit (cons x y))))
 
 Let's run parser.
 
