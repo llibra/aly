@@ -151,7 +151,7 @@
   #'(lambda (stream)
       (many-common (constantly nil) parser stream)))
 
-(defun eof (stream)
+(defun eoi (stream)
   (match stream
     (() (success nil stream))
     (_ (failure stream (list "end of input")))))

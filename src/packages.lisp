@@ -21,7 +21,7 @@
   (:import-from :alexandria :with-gensyms)
   (:import-from :cl-pattern :match)
   (:export :success :failure :satisfy :unit :fail :bind :seq :seq1 :seqn
-           :seq/bind :choice :try :expect :many :skip-many :eof :parse))
+           :seq/bind :choice :try :expect :many :skip-many :eoi :parse))
 
 (defpackage :aly.combinator
   (:use :cl :aly.core)
@@ -32,7 +32,7 @@
   (:export :parser-error
 
            :unit :fail :bind :seq :seq1 :seqn :seq/bind :choice :try :expect
-           :many :skip-many :eof :parse
+           :many :skip-many :eoi :parse
 
            :sep-by :sep-by1 :many1 :skip-many1))
 
