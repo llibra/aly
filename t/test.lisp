@@ -16,6 +16,31 @@
   (5am:is (eql #\a (parse #'any-char "a")))
   (5am:is (eql #\b (parse #'any-char "b"))))
 
+(5am:test mlet1
+  (5am:is (eq t (parse (mlet1 _ (unit nil) (unit t)) nil)))
+  (5am:is (eq t (parse (mlet1 x (unit t) (unit x)) nil)))
+  (5am:signals parser-error
+    (parse (mlet1 _ (unit nil) (fail "fail")) nil))
+  (5am:signals parser-error
+    (parse (mlet1 _ (fail "fail") (unit nil)) nil)))
+
+(5am:test mlet*
+  (5am:is (eq t (parse (mlet* () (unit t)) nil)))
+  (5am:is (eq t (parse (mlet* ((x (unit t))) (unit x)) nil)))
+  (5am:is (eq t (parse (mlet* ((x (unit t))
+                               (y (unit x)))
+                         (unit y))
+                       nil)))
+  (5am:signals parser-error
+    (parse (mlet* () (fail "fail")) nil))
+  (5am:signals parser-error
+    (parse (mlet* ((_ (fail "fail"))) (unit nil)) nil))
+  (5am:signals parser-error
+    (parse (mlet* ((x (unit t))
+                   (_ (fail "fail")))
+             (unit x))
+           nil)))
+
 (5am:test seq
   (5am:is (eq nil (parse (seq) "a")))
   (5am:is (equal '(#\a) (parse (seq #'any-char) "a")))

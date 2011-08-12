@@ -20,8 +20,8 @@
   (:use :cl :aly.util :aly.stream :aly.condition)
   (:import-from :alexandria :with-gensyms)
   (:import-from :cl-pattern :match)
-  (:export :success :failure :satisfy :unit :fail :bind :seq :seq1 :seqn
-           :seq/bind :choice :try :expect :many :skip-many :eoi :parse))
+  (:export :success :failure :satisfy :unit :fail :bind :mlet1 :mlet* :seq :seq1
+           :seqn :seq/bind :choice :try :expect :many :skip-many :eoi :parse))
 
 (defpackage :aly.combinator
   (:use :cl :aly.core)
@@ -31,8 +31,8 @@
   (:use :cl :aly.condition :aly.core :aly.combinator)
   (:export :parser-error
 
-           :unit :fail :bind :seq :seq1 :seqn :seq/bind :choice :try :expect
-           :many :skip-many :eoi :parse
+           :unit :fail :bind :mlet1 :mlet* :seq :seq1 :seqn :seq/bind :choice
+           :try :expect :many :skip-many :eoi :parse
 
            :sep-by :sep-by1 :many1 :skip-many1))
 

@@ -31,6 +31,18 @@
         ((nil pos msgs)
          (failure pos msgs)))))
 
+(defmacro mlet1 (var form &body body)
+  (if (string= var "_")
+      (with-gensyms (_)
+        `(bind ,form #'(lambda (,_) (declare (ignore ,_)) ,@body)))
+      `(bind ,form #'(lambda (,var) ,@body))))
+
+(defmacro mlet* (bindings &body body)
+  (match bindings
+    (() `(progn ,@body))
+    (((var parser) . rest)
+     `(mlet1 ,var ,parser (mlet* ,rest ,@body)))))
+
 (defun seq (&rest parsers)
   (flet ((mcons (mx my)
            (bind mx #'(lambda (x)
