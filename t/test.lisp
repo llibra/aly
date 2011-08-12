@@ -49,17 +49,19 @@
   (5am:is (equal '(#\b #\a) (parse (seq #'any-char #'any-char) "ba"))))
 
 (5am:test seq1
-  (5am:is (eq nil (parse (seq1) "a")))
   (5am:is (eql #\a (parse (seq1 #'any-char) "a")))
   (5am:is (eql #\b (parse (seq1 #'any-char) "b")))
   (5am:is (eql #\a (parse (seq1 #'any-char #'any-char) "ab")))
-  (5am:is (eql #\b (parse (seq1 #'any-char #'any-char) "ba"))))
+  (5am:is (eql #\b (parse (seq1 #'any-char #'any-char) "ba")))
+  (5am:is (eql #\a (parse (seq1 #'any-char #'any-char #'any-char) "abc"))))
 
 (5am:test seqn
   (5am:is (eq nil (parse (seqn) "a")))
   (5am:is (eql #\a (parse (seqn #'any-char) "a")))
   (5am:is (eql #\b (parse (seqn #'any-char) "b")))
-  (5am:is (eql #\b (parse (seqn #'any-char #'any-char) "ab"))))
+  (5am:is (eql #\b (parse (seqn #'any-char #'any-char) "ab")))
+  (5am:is (eql #\a (parse (seqn #'any-char #'any-char) "ba")))
+  (5am:is (eql #\c (parse (seqn #'any-char #'any-char #'any-char) "abc"))))
 
 (5am:test seq/bind
   (5am:is (eq nil (parse (seq/bind) "a")))

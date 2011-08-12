@@ -45,65 +45,38 @@
 
 (defun seq (&rest parsers)
   (flet ((mcons (mx my)
-           (bind mx #'(lambda (x)
-                        (bind my #'(lambda (y) (unit (cons x y))))))))
+           (mlet* ((x mx) (y my)) (unit (cons x y)))))
     (reduce #'mcons parsers
             :from-end t
             :initial-value (unit nil))))
 
-(labels ((rec (rest stream)
-           (match rest
-             ((parser)
-              (funcall parser stream))
-             ((parser . rest)
-              (result-match (funcall parser stream)
-                ((t _ stream _ _)
-                 (rec rest stream))
-                ((nil pos msgs)
-                 (failure pos msgs)))))))
-  (defun seq1 (&rest parsers)
-    (match parsers
-      (() (unit nil))
-      ((parser)
-       #'(lambda (stream) (funcall parser stream)))
-      ((parser . rest)
-       #'(lambda (stream)
-           (result-match (funcall parser stream)
-             ((t value stream _ _)
-              (result-match (rec rest stream)
-                ((t _ stream pos msgs)
-                 (success value stream pos msgs))
-                ((nil pos msgs)
-                 (failure pos msgs))))
-             ((nil pos msgs)
-              (failure pos msgs)))))))
+(defun seqn2 (parser1 parser2)
+  (mlet1 _ parser1 parser2))
 
-  (defun seqn (&rest parsers)
-    (match parsers
-      (() (unit nil))
-      (_ #'(lambda (stream) (rec parsers stream))))))
+(defun seqn (&rest parsers)
+  (match parsers
+    (() (unit nil))
+    (_ (reduce #'seqn2 parsers))))
+
+(defun seq1 (parser1 &rest parsers)
+  (match parsers
+    (() parser1)
+    (_ (mlet* ((x parser1)
+               (_ (reduce #'seqn2 parsers)))
+         (unit x)))))
 
 (defmacro seq/bind (&rest parsers)
-  (with-gensyms (ignore)
-    (match parsers
-      (() '(unit nil))
-      (((var <- parser))
-       (if (string= <- "<-")
-           parser
-           `(,var ,<- ,parser)))
-      ((parser) parser)
-      (((var <- parser) . rest)
-       (if (string= <- "<-")
-           `(bind ,parser #'(lambda (,var) (seq/bind ,@rest)))
-           `(bind (,var ,<- ,parser)
-                  #'(lambda (,ignore)
-                      (declare (ignore ,ignore))
-                      (seq/bind ,@rest)))))
-      ((parser . rest)
-       `(bind ,parser
-              #'(lambda (,ignore)
-                  (declare (ignore ,ignore))
-                  (seq/bind ,@rest)))))))
+  (match parsers
+    (() '(unit nil))
+    (((var <- parser))
+     (if (string= <- "<-") parser `(,var ,<- ,parser)))
+    ((parser) parser)
+    (((var <- parser) . rest)
+     (if (string= <- "<-")
+         `(mlet1 ,var ,parser (seq/bind ,@rest))
+         `(mlet1 _ (,var ,<- ,parser) (seq/bind ,@rest))))
+    ((parser . rest)
+     `(mlet1 _ ,parser (seq/bind ,@rest)))))
 
 (defun choice2 (parser1 parser2)
   #'(lambda (stream)
