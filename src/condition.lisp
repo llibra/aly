@@ -2,4 +2,5 @@
 
 (define-condition parser-error (error)
   ((stream :initarg :stream)
-   (position :initarg :position)))
+   (position :initarg :position)
+   (expected :initarg :expected)))

@@ -8,15 +8,6 @@
 (defun failure (&optional pos msgs)
   (values nil pos msgs))
 
-(defun satisfy (pred)
-  #'(lambda (stream)
-      (if stream
-          (let ((token (parser-stream-car stream)))
-            (if (funcall pred (car token))
-                (success (car token) (parser-stream-cdr stream) stream)
-                (failure stream)))
-          (failure))))
-
 (defun unit (x)
   #'(lambda (stream) (success x stream)))
 
@@ -26,8 +17,14 @@
 (defun bind (parser fn)
   #'(lambda (stream)
       (result-match (funcall parser stream)
-        ((t value stream _ _)
-         (funcall (funcall fn value) stream))
+        ((t value1 stream1 _ msgs1)
+         (result-match (funcall (funcall fn value1) stream1)
+           ((t value2 stream2 pos2 msgs2)
+            (let ((msgs (if (eq stream1 stream2) (cons msgs1 msgs2) msgs2)))
+              (success value2 stream2 pos2 msgs)))
+           ((nil pos2 msgs2)
+            (let ((msgs (if (eq stream1 pos2) (cons msgs1 msgs2) msgs2)))
+              (failure pos2 msgs)))))
         ((nil pos msgs)
          (failure pos msgs)))))
 
@@ -78,15 +75,30 @@
     ((parser . rest)
      `(mlet1 _ ,parser (seq/bind ,@rest)))))
 
+(defun satisfy (pred)
+  #'(lambda (stream)
+      (if stream
+          (let ((token (parser-stream-car stream)))
+            (if (funcall pred (car token))
+                (success (car token) (parser-stream-cdr stream) stream)
+                (failure stream)))
+          (failure))))
+
 (defun choice2 (parser1 parser2)
   #'(lambda (stream)
       (result-match (funcall parser1 stream)
-        ((t value stream1 pos msgs)
-         (success value stream1 pos msgs))
-        ((nil pos msgs)
-         (if (eq pos stream)
-             (funcall parser2 pos)
-             (failure pos msgs))))))
+        ((t value stream pos msgs)
+         (success value stream pos msgs))
+        ((nil pos1 msgs1)
+         (if (eq stream pos1)
+             (result-match (funcall parser2 pos1)
+               ((t value2 stream2 pos2 msgs2)
+                (let ((msgs (if (eq pos1 stream2) (cons msgs1 msgs2) msgs2)))
+                  (success value2 stream2 pos2 msgs)))
+               ((nil pos2 msgs2)
+                (let ((msgs (if (eq pos1 pos2) (cons msgs1 msgs2) msgs2)))
+                  (failure pos2 msgs))))
+             (failure pos1 msgs1))))))
 
 (defun choice (&rest parsers)
   (match parsers
@@ -99,32 +111,31 @@
         ((t value stream pos msgs)
          (success value stream pos msgs))
         ((nil pos msgs)
-         (if (eq pos stream)
+         (if (eq stream pos)
              (failure pos msgs)
-             ;; TODO: Treating the position of failure
-             (failure stream msgs))))))
+             (failure stream))))))
 
 (defun expect (parser x)
-  #'(lambda (stream)
-      (result-match (funcall parser stream)
+  #'(lambda (stream0)
+      (result-match (funcall parser stream0)
         ((t value stream pos msgs)
-         (if (eq pos stream)
-             (success value stream pos (list x))
-             (success value stream pos msgs)))
+         (let ((msgs (if (eq stream0 stream) (list x) msgs)))
+           (success value stream pos msgs)))
         ((nil pos msgs)
-         (if (eq pos stream)
-             (failure pos (list x))
-             (failure pos msgs))))))
+         (let ((msgs (if (eq stream0 pos) (list x) msgs)))
+           (failure pos msgs))))))
 
-;; TODO: Refactoring
-(defun many-common (accum-fn parser stream0)
-  (labels ((rec (stream accum)
-             (result-match (funcall parser stream)
-               ((t value stream1 _ _)
-                (rec stream1 (funcall accum-fn value accum)))
-               ((nil _ _)
-                (success accum stream)))))
-    (rec stream0 nil)))
+;; TODO: Treating a parser that accepts an empty string properly
+(defun many-common (accum-fn parser stream)
+  (labels ((rec (stream0 accum)
+             (result-match (funcall parser stream0)
+               ((t value stream _ _)
+                (rec stream (funcall accum-fn value accum)))
+               ((nil pos msgs)
+                (if (eq stream0 pos)
+                    (success accum stream0 pos msgs)
+                    (failure pos msgs))))))
+    (rec stream nil)))
 
 (defun many (parser)
   #'(lambda (stream)
@@ -143,8 +154,10 @@
 
 ;; TODO: Improving error handling
 (defun signal-parser-error (stream pos msgs)
-  (declare (ignore msgs))
-  (error 'parser-error :stream stream :position pos))
+  (error 'parser-error
+         :stream stream
+         :position pos
+         :expected (remove-duplicates (flatten msgs) :test #'equal)))
 
 (defun parse (parser input &key (parser-error-p t))
   (let ((stream (parser-stream input)))

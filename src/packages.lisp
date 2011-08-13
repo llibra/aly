@@ -18,7 +18,7 @@
 
 (defpackage :aly.core
   (:use :cl :aly.util :aly.stream :aly.condition)
-  (:import-from :alexandria :with-gensyms)
+  (:import-from :alexandria :with-gensyms :flatten)
   (:import-from :cl-pattern :match)
   (:export :success :failure :satisfy :unit :fail :bind :mlet1 :mlet* :seq :seq1
            :seqn :seq/bind :choice :try :expect :many :skip-many :eoi :parse))
