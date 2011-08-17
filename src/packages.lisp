@@ -13,8 +13,9 @@
            :parser-stream-cdr))
 
 (defpackage :aly.condition
-  (:use :cl)
-  (:export :parser-error))
+  (:use :cl :aly.util :aly.stream)
+  (:export :parser-error :parser-error-stream :parser-error-position
+           :parser-error-expected))
 
 (defpackage :aly.core
   (:use :cl :aly.util :aly.stream :aly.condition)
