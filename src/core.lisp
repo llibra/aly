@@ -141,7 +141,9 @@
   #'(lambda (stream)
       (result-match (many-common #'cons parser stream)
         ((t value stream pos msgs)
-         (success (nreverse value) stream pos msgs)))))
+         (success (nreverse value) stream pos msgs))
+        ((nil pos msgs)
+         (failure pos msgs)))))
 
 (defun skip-many (parser)
   #'(lambda (stream)
