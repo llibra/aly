@@ -122,6 +122,66 @@
   (5am:is (equal '((#\a) #\b)
                  (parse (seq (many (specific-char #\a)) #'any-char) "ab"))))
 
+;;;; aly.combinator
+
+(5am:def-suite combinator :in all)
+(5am:in-suite combinator)
+
+(5am:test end-by
+  (flet ((eb (x)
+           (parse (end-by #'letter (specific-char #\;)) x)))
+    (5am:is (eq nil (eb "")))
+    (5am:signals parser-error (eb "a"))
+    (5am:is (equal '(#\a) (eb "a;")))
+    (5am:signals parser-error (eb "a;a"))
+    (5am:is (equal '(#\a #\a) (eb "a;a;")))))
+
+(5am:test end-by1
+  (flet ((eb1 (x)
+           (parse (end-by1 #'letter (specific-char #\;)) x)))
+    (5am:signals parser-error (eb1 ""))
+    (5am:signals parser-error (eb1 "a"))
+    (5am:is (equal '(#\a) (eb1 "a;")))
+    (5am:signals parser-error (eb1 "a;a"))
+    (5am:is (equal '(#\a #\a) (eb1 "a;a;")))))
+
+(5am:test times
+  (flet ((tm (n)
+           (parse (times #'any-char n) "aa")))
+    (5am:is (eq nil (tm 0)))
+    (5am:is (equal '(#\a) (tm 1)))
+    (5am:is (equal '(#\a #\a) (tm 2)))
+    (5am:signals parser-error (tm 3))))
+
+(5am:test between
+  (flet ((bt (x)
+           (let ((l (specific-char #\())
+                 (r (specific-char #\))))
+             (parse (between l #'letter r) x))))
+    (5am:signals parser-error (bt ""))
+    (5am:signals parser-error (bt "a"))
+    (5am:signals parser-error (bt "(a"))
+    (5am:is (eql #\a (bt "(a)")))
+    (5am:is (eql #\b (bt "(b)")))
+    (5am:is (eql #\a (bt "(a)!")))))
+
+(5am:test many-till
+  (flet ((mt (x)
+           (parse (many-till #'any-char (specific-char #\.)) x)))
+    (5am:is (eq nil (mt "")))
+    (5am:is (eq nil (mt ".")))
+    (5am:is (eq nil (mt ".a")))
+    (5am:is (equal '(#\a) (mt "a.")))
+    (5am:is (equal '(#\a #\b) (mt "ab.")))))
+
+(5am:test not-followed-by
+  (flet ((nfb (x)
+           (parse (not-followed-by (specific-char #\a)) x)))
+    (5am:is (eq nil (nfb "")))
+    (5am:is (eq nil (nfb "b")))
+    (5am:is (eq nil (nfb "ba")))
+    (5am:signals parser-error (nfb "a"))))
+
 (5am:def-suite character :in all)
 (5am:in-suite character)
 

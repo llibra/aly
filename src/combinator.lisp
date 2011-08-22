@@ -16,3 +16,25 @@
 
 (defun skip-many1 (parser)
   (seqn parser (skip-many parser)))
+
+(defun end-by (parser sep)
+  (many (seq1 parser sep)))
+
+(defun end-by1 (parser sep)
+  (many1 (seq1 parser sep)))
+
+(defun times (parser n)
+  (apply #'seq (make-list n :initial-element parser)))
+
+(defun between (open parser close)
+  (mlet* ((_ open)
+          (x parser)
+          (_ close))
+    (unit x)))
+
+(defun many-till (parser end)
+  (many (mlet1 _ (not-followed-by end) parser)))
+
+(defun not-followed-by (parser)
+  (try (choice (mlet1 _ parser (fail nil))
+               (unit nil))))
