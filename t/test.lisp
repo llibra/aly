@@ -279,17 +279,21 @@
   (5am:signals parser-error
     (parse #'tab "a")))
 
-(5am:test space
-  (5am:is (eql #\space (parse #'space " ")))
-  (5am:is (eql #\page (parse #'space "")))
-  (5am:is (eql #\tab (parse #'space "	")))
-  (5am:is (eql #\newline (parse #'space (format nil "~%"))))
-  (5am:signals parser-error
-    (parse #'space "a")))
+(5am:test whitespace
+  (flet ((ws (x)
+           (parse #'whitespace x)))
+    (5am:is (eql #\space        (ws " ")))
+    (5am:is (eql #\page         (ws "")))
+    (5am:is (eql #\tab          (ws "	")))
+    (5am:is (eql #\newline      (ws (format nil "~%"))))
+    (5am:signals parser-error   (ws "a"))))
 
-(5am:test spaces
-  (5am:is (eq nil (parse #'spaces "")))
-  (5am:is (eq nil (parse #'spaces " ")))
-  (5am:signals parser-error
-    (parse (seq #'spaces #'any-char) "  "))
-  (5am:is (equal '(nil #\a) (parse (seq #'spaces #'any-char) " a"))))
+(5am:test whitespaces
+  (flet ((wss1 (x)
+           (parse #'whitespaces x))
+         (wss2 (x)
+           (parse (seqn #'whitespaces #'any-char) x)))
+    (5am:is (eq nil (wss1 "")))
+    (5am:is (eq nil (wss1 " ")))
+    (5am:signals parser-error (wss2 "  "))
+    (5am:is (eql '#\a (wss2 " a")))))

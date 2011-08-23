@@ -33,7 +33,7 @@
   (satisfy (constantly t)))
 
 (defalias upper
-  (expect (satisfy #'upper-case-p) "a uppercase letter"))
+  (expect (satisfy #'upper-case-p) "an uppercase letter"))
 
 (defalias lower
   (expect (satisfy #'lower-case-p) "a lowercase letter"))
@@ -54,7 +54,7 @@
   (expect (satisfy (rcurry #'digit-char-p 16)) "a hexadecimal digit"))
 
 (defalias oct-digit
-  (expect (satisfy (rcurry #'digit-char-p 8)) "a octal digit"))
+  (expect (satisfy (rcurry #'digit-char-p 8)) "an octal digit"))
 
 (defalias newline
   (expect (specific-char #\Newline) "a new line"))
@@ -62,11 +62,11 @@
 (defalias tab
   (expect (specific-char #\Tab) "a tab"))
 
-(defalias space
+(defalias whitespace
   (expect (satisfy #'(lambda (c)
                        (some (curry #'eql c)
                              '(#\Space #\Page #\Tab #\Newline))))
           "a space"))
 
-(defalias spaces
-  (skip-many #'space))
+(defalias whitespaces
+  (skip-many #'whitespace))

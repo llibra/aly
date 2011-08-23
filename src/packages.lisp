@@ -44,4 +44,4 @@
   (:import-from :alexandria :curry :rcurry)
   (:export :specific-char :specific-string :one-of :none-of :any-char :upper
            :lower :letter :alpha-num :digit :decimal-digit :hex-digit :oct-digit
-           :newline :tab :space :spaces))
+           :newline :tab :whitespace :whitespaces))
