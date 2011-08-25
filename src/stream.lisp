@@ -4,11 +4,10 @@
 ;;;
 ;;; <parser-stream> : nil | (<token> . <stream-or-generator>) 
 ;;; <stream-or-generator> : <parser-stream> | <generator>
-;;; <token> : (<datum> . <position>)
 
 (defun make-parser-stream (generator)
   (aif (funcall generator)
-       (cons (cons it 0) generator)
+       (cons it generator)
        nil))
 
 (defmethod parser-stream ((x null)) nil)
@@ -29,7 +28,6 @@
 (defun parser-stream-cdr (stream)
   (if (functionp (cdr stream))
       (aif (funcall (cdr stream))
-           (setf (cdr stream)
-                 (cons (cons it (1+ (cdar stream))) (cdr stream)))
+           (setf (cdr stream) (cons it (cdr stream)))
            (setf (cdr stream) nil))
       (cdr stream)))

@@ -79,8 +79,8 @@
   #'(lambda (stream)
       (if stream
           (let ((token (parser-stream-car stream)))
-            (if (funcall pred (car token))
-                (success (car token) (parser-stream-cdr stream) stream)
+            (if (funcall pred token)
+                (success token (parser-stream-cdr stream) stream)
                 (failure stream)))
           (failure))))
 

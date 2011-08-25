@@ -13,7 +13,7 @@
       (format out "input at ~a.~%" (numerical-position pos stream))
       (format out "end of input.~%"))
   (let ((*print-circle* nil)
-        (unexpected (if pos (car (parser-stream-car pos)) "the end of input")))
+        (unexpected (if pos (parser-stream-car pos) "the end of input")))
     (if expect
         (format out "It expects ~{~a~}, but got ~a."
                 (intersperse ", " expect " or ") unexpected)
