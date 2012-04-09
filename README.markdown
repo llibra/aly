@@ -18,6 +18,11 @@ yet. Probably slow.
 まだ作りかけなので、欠けている機能が結構あります。最適化もまだしていません。おそ
 らく速度も遅いと思います。
 
+License
+-------
+
+It's licensed under the MIT license.
+
 Requirements
 ------------
 
@@ -74,7 +79,32 @@ There is no documentation yet. The tests in t/ will help you know how to use.
 
 まだドキュメントがないので、使い方は、t/以下にあるテストを見てください。
 
-License
--------
+Implementation strategy
+-----------------------
 
-It's licensed under the MIT license.
+* For performance, parsers return not structures or CLOS objects but
+  multiple values. The implementations like SBCL and CCL, which use stack for
+  handling of multiple values, probably compile it to more efficient code.
+
+* 性能のために、パーサはCLOSオブジェクトや構造体でなく多値を返します。SBCLやCCL
+  のように、スタックを使って多値を処理する処理系では、より効率的なコードにコンパ
+  イルされるはずです。
+
+* Parsers use simple lazy streams as input data. There are two reasons: a) to
+  prevent converting large data at a time and b) to avoid a pain due to side
+  effects and unnecessary copy of object. This approach has some disadvantages.
+  The most important one is amount of memory consumption. On 32-bit systems,
+  n * 8 bytes (n = the number of tokens) are required additionally. On 64-bit
+  systems, it's n * 16 bytes.
+
+* パーサは入力データとして単純な遅延ストリームを利用します。これにはふたつの理由
+  があり、a)一度に大きなデータを変換するのを防ぐためと、b)副作用による面倒や不要
+  なオブジェクトのコピーを避けるためです。このアプローチにはデメリットがあり、最
+  も重大なものはメモリの消費量です。32ビットシステムではn * 8バイト（n＝トークン
+  の数）多く必要になり、64ビットシステムではn * 16バイトです。
+
+* The position of a token is not calculated until it is required. Thereby the
+  calculation amount when a parsing error occurs increases.
+
+* トークンの位置は必要になるまで計算されません。そのため、パースエラーが起きたと
+  きの計算量が増えています。
