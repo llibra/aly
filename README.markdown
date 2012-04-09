@@ -30,6 +30,33 @@ Requirements
 * [Anaphora](http://common-lisp.net/project/anaphora/)
 * [CL-PATTERN](https://github.com/arielnetworks/cl-pattern)
 
+Install
+-------
+
+To obtain source code, run following commands in your shell:
+
+ソースコードを入手するために、シェルで以下のコマンドを実行してください。
+
+    % cd ~/quicklisp/local-projects
+    % hg clone https://bitbucket.org/llibra/aly
+
+Alternatively you can do it without Mercurial:
+
+Mercurialを使わなくても手に入れることができます。
+
+    % cd ~/quicklisp/local-projects
+    % curl https://bitbucket.org/llibra/aly/get/default.tar.bz2 | bzcat | tar xf -
+
+Then, run your Lisp implementation and evaluate a following form:
+
+そうしたら、Lispの処理系を起動して以下の式を評価します。
+
+    > (ql:quickload :aly)
+
+It's all done.
+
+完了です。
+
 Usage
 -----
 
