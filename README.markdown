@@ -106,6 +106,141 @@ There is no documentation yet. The tests in t/ will help you know how to use.
 
 まだドキュメントがないので、使い方は、t/以下にあるテストを見てください。
 
+API
+---
+
+### Core
+
+#### Function: unit x
+
+Returns a parser that always suceeds with value `x` without consuming any input.
+
+値`x`をともなって必ず成功するパーサを返します。このパーサは入力を消費しません。
+
+#### Function: fail msg
+
+Returns a parser that always fails with the `msg` error message without
+consuming any input.
+
+メッセージ`msg`をともなって必ず失敗するパーサを返します。 このパーサは入力を消費
+しません。
+
+#### Function: bind parser fn
+
+Returns a parser for sequencing. The parser first applies `parser` and applies
+`fn` to the result value of `parser`. Then it applies the parser returned from
+`fn` and returns the result.
+
+順番に実行するためのパーサを返します。パーサは最初に`parser`を適用し、`parser`の
+結果の値に`fn`を適用します。次に、`fn`が返すパーサを適用し、その結果を返します。
+
+#### Macro: mlet1 var form &body body
+
+A syntax sugar of `bind`. Returns a parser that binds `var` to the result value
+of `form` and executes `body`. If `var` is `_`, the returned value of `form` is
+just discarded.
+
+`bind`の構文糖です。 `form`の結果の値で`var`を束縛してから`body`を実行します。も
+し`var`が`_`なら、`form`から返される値は単に捨てられます。
+
+#### Macro: mlet* bindings &body body
+
+A multiple and sequencial version of `mlet1`.
+
+複数の束縛を順番に作る`mlet1`です。
+
+### Function: seq &rest parsers
+
+Returns a parser that sequentially applies each parser in `parsers` and returns
+the list of the result values on success.
+
+`parsers`のそれぞれのパーサを順番に適用し、 成功すると結果の値を返すパーサを返し
+ます。
+
+#### Function: seq1 parser1 &rest parsers
+
+`seq1` is similar to `seq`, but requires at least one parser and the returned
+parser returns the result of `parser1` on success.
+
+`seq1`は`seq`に似ていますが、 少なくともひとつのパーサを必要とし、返されたパーサ
+が成功すると`parser1`の結果を返します。
+
+#### Function: seqn &rest parsers
+
+`seqn` is similar to `seq`, but the returned parser returns the result of the
+last parser in `parsers` on success.
+
+`seqn`は`seq`に似ていますが、返されたパーサが成功すると`parsers`の最後のパーサの
+結果を返します。
+
+#### Macro: seq/bind &rest parsers
+
+Haskell's `do` notation. Another syntax sugar of `bind`.
+
+Haskellの`do`記法です。`bind`のもうひとつの構文糖です。
+
+#### Function: choice &rest parsers
+
+Returns a parser that sequentially applies each parser in `parsers` until one of
+them succeeds. The parser does not backtrack implicitly. It returns the result
+of the successful parser.
+
+どれかが成功するまで、 `parsers`のそれぞれのパーサを順番に適用するパーサを返しま
+す。パーサは暗黙のうちにバックトラックしたりはしません。成功したパーサの結果を返
+します。
+
+#### Function: try parser
+
+Returns a parser that is equivalent to `parser` except the behavior on failure.
+The parser consumes no input on failure.
+
+失敗したときの動作以外は`parser`と等しいパーサを返します。パーサは失敗しても入力
+を消費しません。
+
+#### Function: expect parser x
+
+Returns a parser that is equivalent to `parser` except the behavior on failure
+without consuming any input. If the parser fails without consuming any input,
+`x` is used as a part of the error message instead of the original one.
+
+入力を消費しないで失敗したときの動作以外は`parser`と等しいパーサを返します。もし
+パーサが入力を消費せずに失敗した場合、 元のものの代わりに`x`がエラーメッセージの
+一部として使われます。
+
+#### Function: many parser
+
+Returns a parser that applies `parser` zero or more times. The parser returns a
+list of the result values.
+
+`parser`を0回以上適用するパーサを返します。パーサは結果の値のリストを返します。
+
+#### Function: skip-many parser
+
+Returns a parser that applies `parser` zero or more times. The result values is
+just discarded. Thereby the parser always returns `nil`.
+
+`parser`を0回以上適用するパーサを返します。 結果の値は単に捨てられ、パーサは常に
+`nil`を返します。
+
+#### Function: eoi
+
+This is not a parser generator but a parser. Succeeds at the end of the input.
+
+パーサジェネレータではなくてパーサです。入力が終端に達したときに成功します。
+
+#### Function: parse parser input &key (parser-error-p t)
+
+Runs `parser` with `input`. `input` is assumed as a parser stream. If
+`parser-error-p` is true, signals an error on failure. Otherwise returns `nil`.
+
+`input`に対して`parser`を実行します。`input`はパーサストリームです。もしも
+`parser-error-p`が真なら、パーサが失敗したときにエラーを発生させます。それ以外の
+場合`nil`を返します。
+
+### Combinators
+
+...
+
 Implementation strategy
 -----------------------
 
