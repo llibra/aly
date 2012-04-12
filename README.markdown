@@ -230,12 +230,13 @@ This is not a parser generator but a parser. Succeeds at the end of the input.
 
 #### Function: parse parser input &key (parser-error-p t)
 
-Runs `parser` with `input`. `input` is assumed as a parser stream. If
-`parser-error-p` is true, signals an error on failure. Otherwise returns `nil`.
+Runs `parser` with `input` and returns the result value. `input` is assumed as a
+parser stream. If `parser-error-p` is true, signals an error on failure.
+Otherwise returns `nil` on failure.
 
-`input`に対して`parser`を実行します。`input`はパーサストリームです。もしも
-`parser-error-p`が真なら、パーサが失敗したときにエラーを発生させます。それ以外の
-場合`nil`を返します。
+`input`に対して`parser`を実行して結果の値を返します。`input`はパーサストリームで
+す。もしも`parser-error-p`が真なら、パーサが失敗したときにエラーを発生させます。
+それ以外の場合、失敗すると`nil`を返します。
 
 ### Combinators
 
