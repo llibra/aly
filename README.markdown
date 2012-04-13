@@ -210,9 +210,10 @@ without consuming any input. If the parser fails without consuming any input,
 #### Function: many parser
 
 Returns a parser that applies `parser` zero or more times. The parser returns a
-list of the result values.
+list of the result values on success.
 
-`parser`を0回以上適用するパーサを返します。パーサは結果の値のリストを返します。
+`parser`を0回以上適用するパーサを返します。 成功するとパーサは結果の値のリストを
+返します。
 
 #### Function: skip-many parser
 
@@ -222,7 +223,7 @@ just discarded. Thereby the parser always returns `nil`.
 `parser`を0回以上適用するパーサを返します。 結果の値は単に捨てられ、パーサは常に
 `nil`を返します。
 
-#### Function: eoi
+#### Function: eoi stream
 
 This is not a parser generator but a parser. Succeeds at the end of the input.
 
@@ -240,7 +241,126 @@ Otherwise returns `nil` on failure.
 
 ### Combinators
 
-...
+#### Function: sep-by parser sep
+
+Returns a parser that expects zero or more sequences of `parser` separated by
+`sep`. The parser returns a list of the result values of `parser` on success.
+The result values of `sep` is discarded.
+
+`sep`で区切られた`parser`の0回以上の繰り返しを期待するパーサを返します。成功する
+とパーサは `parser`の結果の値のリストを返します。`sep`の結果の値は捨てられます。
+
+#### Function: sep-by1 parser sep
+
+Returns a parser that expects one or more sequences of `parser` separated by
+`sep`. The parser returns a list of the result values of `parser` on success.
+The result values of `sep` is discarded.
+
+`sep`で区切られた`parser`の1回以上の繰り返しを期待するパーサを返します。成功する
+とパーサは`parser`の結果の値のリストを返します。 `sep`の結果の値は捨てられます。
+
+#### Function: many1 parser
+
+Returns a parser that applies `parser` one or more times. The parser returns a
+list of the result values on success.
+
+`parser`を1回以上適用するパーサを返します。 成功するとパーサは結果の値のリストを
+返します。
+
+#### Function: skip-many1 parser
+
+Returns a parser that applies `parser` one or more times. The result values is
+just discarded. Thereby the parser always returns `nil` as the result value.
+
+`parser`を1回以上適用するパーサを返します。 結果の値は単に捨てられ、パーサは結果
+の値として常に`nil`を返します。
+
+#### Function: end-by parser sep
+
+Returns a parser that expects zero or more sequences of `parser` separated and
+ended by `sep`. The parser returns a list of the result values of `parser` on
+success. The result values of `sep` is discarded.
+
+`sep`で区切られ、`sep`で終了する、 `parser`の0回以上の繰り返しを期待するパーサを
+返します。成功するとパーサは`parser`の結果の値のリストを返します。 `sep`の結果の
+値は捨てられます。
+
+#### Function: end-by1 parser sep
+
+Returns a parser that expects one or more sequences of `parser` separated and
+ended by `sep`. The parser returns a list of the result values of `parser` on
+success. The result values of `sep` is discarded.
+
+`sep`で区切られ、`sep`で終了する、 `parser`の1回以上の繰り返しを期待するパーサを
+返します。成功するとパーサは`parser`の結果の値のリストを返します。 `sep`の結果の
+値は捨てられます。
+
+#### Function: times parser n
+
+Returns a parser that applies `parser` `n` times and returns a list of the
+result values of `parser` on success.
+
+`parser`を`n`回適用し、 成功すると`parser`の結果の値のリストを返すパーサを返しま
+す。
+
+#### Function: between open parser close
+
+Returns a parser that expects a sequence of `open`, `parser` and `close`. The
+parser returns the result of `parser` on success.
+
+`open`と`parser`と`close`の並びを期待するパーサを返します。成功するとパーサは
+`parser`の結果を返します。
+
+#### Function: many-till parser end
+
+Returns a parser that applies `parser` zero or more times until `end` succeeds.
+The parser returns a list of the result values of `parser` on success.
+
+`parser`を`end`が成功するまで0回以上適用するパーサを返します。成功するとパーサは
+`parser`の結果の値のリストを返します。
+
+#### Function: not-followed-by parser
+
+Returns a parser that succeeds when `parser` fails. The parser does not consume
+any input.
+
+`parser`が失敗したときに成功するパーサを返します。パーサは入力を消費しません。
+
+### Character parsers
+
+#### Function: specific-char c
+
+#### Function: specific-string string
+
+#### Function: one-of &rest cs
+
+#### Function: none-of &rest cs
+
+#### Function: any-char stream
+
+#### Function: upper stream
+
+#### Function: lower stream
+
+#### Function: letter stream
+
+#### Function: alpha-num stream
+
+#### Function: digit &optional (radix 10)
+
+#### Function: decimal-digit stream
+
+#### Function: hex-digit stream
+
+#### Function: oct-digit stream
+
+#### Function: newline stream
+
+#### Function: tab stream
+
+#### Function: whitespace stream
+
+#### Function: whitespaces stream
 
 Implementation strategy
 -----------------------
