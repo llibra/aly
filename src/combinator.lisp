@@ -35,6 +35,30 @@
 (defun many-till (parser end)
   (many (mlet1 _ (not-followed-by end) parser)))
 
+(defun chainl1 (parser op)
+  (labels ((rec (x)
+             (choice (mlet* ((f op) (y parser))
+                       (rec (funcall f x y)))
+                     (unit x))))
+    (mlet1 x parser (rec x))))
+
+(defun chainl (parser op &optional x)
+  (choice (chainl1 parser op)
+          (unit x)))
+
+(defun chainr1 (parser op)
+  (labels ((rec ()
+             (mlet1 x parser (rec-1 x)))
+           (rec-1 (x)
+             (choice (mlet* ((f op) (y (rec)))
+                       (unit (funcall f x y)))
+                     (unit x))))
+    (rec)))
+
+(defun chainr (parser op &optional x)
+  (choice (chainr1 parser op)
+          (unit x)))
+
 (defun not-followed-by (parser)
   (try (choice (mlet1 _ parser (fail nil))
                (unit nil))))

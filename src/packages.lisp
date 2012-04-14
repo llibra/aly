@@ -27,7 +27,7 @@
 (defpackage :aly.combinator
   (:use :cl :aly.core)
   (:export :sep-by :sep-by1 :many1 :skip-many1 :end-by :end-by1 :times :between
-           :many-till :not-followed-by))
+           :many-till :chainl1 :chainl :chainr1 :chainr :not-followed-by))
 
 (defpackage :aly
   (:use :cl :aly.condition :aly.core :aly.combinator)
@@ -37,7 +37,7 @@
            :try :expect :many :skip-many :eoi :parse
 
            :sep-by :sep-by1 :many1 :skip-many1 :end-by :end-by1 :times :between
-           :many-till :not-followed-by))
+           :many-till :chainl1 :chainl :chainr1 :chainr :not-followed-by))
 
 (defpackage :aly.char
   (:use :cl :aly.util :aly.core :aly.combinator)

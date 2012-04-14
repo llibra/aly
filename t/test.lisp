@@ -174,6 +174,25 @@
     (5am:is (equal '(#\a) (mt "a.")))
     (5am:is (equal '(#\a #\b) (mt "ab.")))))
 
+(flet ((body (fn x)
+         (5am:is (eql x (parse (funcall fn #'any-char #'any-char x) nil)))))
+  (5am:test (chainl/default-value :compile-at :definition-time)
+    (body #'chainl :default))
+  (5am:test (chainr/default-value :compile-at :definition-time)
+    (body #'chainr :default)))
+
+(flet ((body (fn x src)
+         (let ((digit (mlet1 x (digit) (unit (digit-char-p x))))
+               (plus (seqn (specific-char #\+) (unit #'+)))
+               (minus (seqn (specific-char #\-) (unit #'-))))
+           (5am:is (= x (parse (funcall fn digit (choice plus minus)) src))))))
+  (5am:test (chainl/add-and-subtract :compile-at :definition-time)
+    (body #'chainl1 3 "1-2+3-4+5")
+    (body #'chainl 3 "1-2+3-4+5"))
+  (5am:test (chainr/add-and-subtract :compile-at :definition-time)
+    (body #'chainr1 5 "1-2+3-4+5")
+    (body #'chainr 5 "1-2+3-4+5")))
+
 (5am:test not-followed-by
   (flet ((nfb (x)
            (parse (not-followed-by (specific-char #\a)) x)))

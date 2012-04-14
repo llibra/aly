@@ -315,6 +315,48 @@ The parser returns a list of the result values of `parser` on success.
 `parser`を`end`が成功するまで0回以上適用するパーサを返します。成功するとパーサは
 `parser`の結果の値のリストを返します。
 
+#### Function: chainl1 parser op
+
+Returns a parser that expects one or more sequences of `parser` separated by
+`op`. The parser returns a value produced by a left-associative application of
+all functions returned by `op` to the result values of `parser` on success.
+
+`op`で区切られた`parser`の1回以上の繰り返しを期待するパーサを返します。 パーサが
+成功した場合、`parser`の結果の値に`op`が返す関数を左結合で適用した値を返します。
+
+#### Function: chainl parser op &optional x
+
+Returns a parser that expects zero or more sequences of `parser` separated by
+`op`. The parser returns a value produced by a left-associative application of
+all functions returned by `op` to the result values of `parser` on success. If
+the first `parser` fails without consuming any input, it returns `x` as a result
+value.
+
+`op`で区切られた`parser`の0回以上の繰り返しを期待するパーサを返します。 パーサが
+成功した場合、`parser`の結果の値に`op`が返す関数を左結合で適用した値を返します。
+最初の`parser`が入力を消費しないで失敗した場合、結果の値として`x`を返します。
+
+#### Function: chainr1 parser op
+
+Returns a parser that expects one or more sequences of `parser` separated by
+`op`. The parser returns a value produced by a right-associative application of
+all functions returned by `op` to the result values of `parser` on success.
+
+`op`で区切られた`parser`の1回以上の繰り返しを期待するパーサを返します。 パーサが
+成功した場合、`parser`の結果の値に`op`が返す関数を右結合で適用した値を返します。
+
+#### Function: chainr parser op &optional x
+
+Returns a parser that expects zero or more sequences of `parser` separated by
+`op`. The parser returns a value produced by a right-associative application of
+all functions returned by `op` to the result values of `parser` on success. If
+the first `parser` fails without consuming any input, it returns `x` as a result
+value.
+
+`op`で区切られた`parser`の0回以上の繰り返しを期待するパーサを返します。 パーサが
+成功した場合、`parser`の結果の値に`op`が返す関数を右結合で適用した値を返します。
+最初の`parser`が入力を消費しないで失敗した場合、結果の値として`x`を返します。
+
 #### Function: not-followed-by parser
 
 Returns a parser that succeeds when `parser` fails. The parser does not consume
