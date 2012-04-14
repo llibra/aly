@@ -14,12 +14,12 @@
                     (rec stream2 (1+ index)))
                    ((nil pos msgs)
                     (failure pos msgs))))))
-    #'(lambda (stream)
-        (result-match (rec stream 0)
-          ((t _ stream pos msgs)
-           (success string stream pos msgs))
-          ((nil pos msgs)
-           (failure pos msgs))))))
+    (lambda (stream)
+      (result-match (rec stream 0)
+        ((t _ stream pos msgs)
+         (success string stream pos msgs))
+        ((nil pos msgs)
+         (failure pos msgs))))))
 
 (defun one-of (&rest cs)
   (expect (satisfy (rcurry #'member cs))
@@ -63,9 +63,9 @@
   (expect (specific-char #\Tab) "a tab"))
 
 (defalias whitespace
-  (expect (satisfy #'(lambda (c)
-                       (some (curry #'eql c)
-                             '(#\Space #\Page #\Tab #\Newline))))
+  (expect (satisfy (lambda (c)
+                     (some (curry #'eql c)
+                           '(#\Space #\Page #\Tab #\Newline))))
           "a space"))
 
 (defalias whitespaces
