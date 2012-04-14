@@ -64,7 +64,7 @@ At first, we need to load aly.
 
 最初にalyを読み込みます。
 
-    (asdf:load-system :aly)
+    (asdf:load-system :aly) ; or (ql:quickload :aly)
     (defpackage :aly.demo (:use :cl :aly :aly.char))
     (in-package :aly.demo)
 
@@ -80,20 +80,20 @@ a result as multiple values.
                           (specific-char #\")))))
     
     (setf (symbol-function 'field)
-      (choice (seq/bind (specific-char #\")
-                        (x <- #'quoted)
-                        (specific-char #\")
-                        (unit (coerce x 'string)))
-              (seq/bind (x <- (many (none-of #\, #\Newline)))
-                        (unit (coerce x 'string)))))
+      (choice (mlet* ((_ (specific-char #\"))
+                      (x #'quoted)
+                      (_ (specific-char #\")))
+                (unit (coerce x 'string)))
+              (mlet1 x (many (none-of #\, #\newline))
+                (unit (coerce x 'string)))))
     
     (setf (symbol-function 'record)
       (sep-by #'field (specific-char #\,)))
     
     (setf (symbol-function 'csv)
-      (seq/bind (x <- #'record)
-                (y <- (many (seqn (specific-char #\Newline) #'record)))
-                (unit (cons x y))))
+      (mlet* ((x #'record)
+              (y (many (seqn (specific-char #\Newline) #'record))))
+        (unit (cons x y))))
 
 Let's run the parser.
 
@@ -101,10 +101,6 @@ Let's run the parser.
 
     (parse #'csv (format nil "a,b,c~%d,e,f~%g,h,i"))
     ;;=> (("a" "b" "c") ("d" "e" "f") ("g" "h" "i")), NIL
-
-There is no documentation yet. The tests in t/ will help you know how to use.
-
-まだドキュメントがないので、使い方は、t/以下にあるテストを見てください。
 
 API
 ---
