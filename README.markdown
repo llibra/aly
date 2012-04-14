@@ -330,37 +330,110 @@ any input.
 
 #### Function: specific-char c
 
+Expects a single character equals `c` and returns `c` on success.
+
+`c`と等しい文字を期待します。成功すると`c`を返します。
+
 #### Function: specific-string string
+
+Expects a string equals `string` and returns `string` on success.
+
+`string`と等しい文字列を期待します。成功すると`string`を返します。
 
 #### Function: one-of &rest cs
 
+Expects one of the characters in `cs` and returns the parsed character on
+success.
+
+`cs`の文字のひとつを期待します。成功すると解析された文字を返します。
+
 #### Function: none-of &rest cs
+
+Expects none of the characters in `cs` and returns the parsed character on
+success.
+
+`cs`に含まれない文字を期待します。成功すると解析された文字を返します。
 
 #### Function: any-char stream
 
+Succeeds for any character and returns the parsed character on success.
+
+すべての文字に対して成功します。成功すると解析された文字を返します。
+
 #### Function: upper stream
+
+Expects an uppercase letter and returns the parsed character on success.
+
+大文字を期待します。成功すると解析された文字を返します。
 
 #### Function: lower stream
 
+Expects a lower case letter and returns the parsed character on success.
+
+小文字を期待します。成功すると解析された文字を返します。
+
 #### Function: letter stream
+
+Expects a letter and returns the parsed character on success.
+
+文字を期待します。成功すると解析された文字を返します。
 
 #### Function: alpha-num stream
 
+Expects a letter or digit and returns the parsed character on success.
+
+文字か数字を期待します。成功すると解析された文字を返します。
+
 #### Function: digit &optional (radix 10)
+
+Returns a parser that expects a digit and returns the parsed character on
+success.
+
+数字を期待し、成功すると解析された文字を返すパーサを返します。
 
 #### Function: decimal-digit stream
 
+Expects a decimal digit and returns the parsed character on success.
+
+10進数の数字を期待します。成功すると解析された文字を返します。
+
 #### Function: hex-digit stream
+
+Expects a hex digit and returns the parsed character on success.
+
+16進数の数字を期待します。成功すると解析された文字を返します。
 
 #### Function: oct-digit stream
 
+Expects a octal digit and returns the parsed character on success.
+
+8進数の数字を期待します。成功すると解析された文字を返します。
+
 #### Function: newline stream
+
+Expects a newline (#\newline) and returns it on success.
+
+改行（#\newline）を期待し、成功すると改行を返します。
 
 #### Function: tab stream
 
+Expects a tab (#\tab) and returns it on success.
+
+タブ（#\tab）を期待し、成功するとタブを返します。
+
 #### Function: whitespace stream
 
+Expects a whitespace (#\space, #\page, #\tab and #\newline) and returns the
+parsed character on success.
+
+ホワイトスペース（#\space、#\page、#\tab、#\newline）を期待します。 成功すると解
+析された文字を返します。
+
 #### Function: whitespaces stream
+
+Skips zero or more whitespace.
+
+0個以上のホワイトスペースをスキップします。
 
 Implementation strategy
 -----------------------
