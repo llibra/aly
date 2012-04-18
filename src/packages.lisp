@@ -3,7 +3,7 @@
 (defpackage :aly.util
   (:use :cl)
   (:import-from :alexandria :with-gensyms)
-  (:import-from :cl-pattern :match)
+  (:import-from :5pm :match)
   (:export :defalias :result-match :intersperse))
 
 (defpackage :aly.stream
@@ -20,7 +20,7 @@
 (defpackage :aly.core
   (:use :cl :aly.util :aly.stream :aly.condition)
   (:import-from :alexandria :with-gensyms :flatten)
-  (:import-from :cl-pattern :match)
+  (:import-from :5pm :match :guard)
   (:export :success :failure :satisfy :unit :fail :bind :mlet1 :mlet* :seq :seq1
            :seqn :seq/bind :choice :try :expect :many :skip-many :eoi :parse))
 

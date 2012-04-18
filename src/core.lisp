@@ -37,7 +37,7 @@
 (defmacro mlet* (bindings &body body)
   (match bindings
     (() `(progn ,@body))
-    (((var parser) . rest)
+    ((cons (list var parser) rest)
      `(mlet1 ,var ,parser (mlet* ,rest ,@body)))))
 
 (defun seq (&rest parsers)
@@ -63,17 +63,15 @@
          (unit x)))))
 
 (defmacro seq/bind (&rest parsers)
-  (match parsers
-    (() '(unit nil))
-    (((var <- parser))
-     (if (string= <- "<-") parser `(,var ,<- ,parser)))
-    ((parser) parser)
-    (((var <- parser) . rest)
-     (if (string= <- "<-")
-         `(mlet1 ,var ,parser (seq/bind ,@rest))
-         `(mlet1 _ (,var ,<- ,parser) (seq/bind ,@rest))))
-    ((parser . rest)
-     `(mlet1 _ ,parser (seq/bind ,@rest)))))
+  (flet ((<-p (<-) (string= <- "<-")))
+    (match parsers
+      (() '(unit nil))
+      ((guard (list (list _ <- parser)) (<-p <-)) parser)
+      ((list parser) parser)
+      ((guard (cons (list var <- parser) rest) (<-p <-))
+       `(mlet1 ,var ,parser (seq/bind ,@rest)))
+      ((cons parser rest)
+       `(mlet1 _ ,parser (seq/bind ,@rest))))))
 
 (defun satisfy (pred)
   (lambda (stream)

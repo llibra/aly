@@ -28,7 +28,7 @@ Requirements
 
 * [Alexandria](http://common-lisp.net/project/alexandria/)
 * [Anaphora](http://common-lisp.net/project/anaphora/)
-* [CL-PATTERN](https://github.com/arielnetworks/cl-pattern)
+* [fivepm](https://github.com/m2ym/fivepm)
 
 Install
 -------

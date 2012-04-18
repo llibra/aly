@@ -16,7 +16,9 @@
        ;; The list is allocated in the heap for tail call optimization.
        ;; But it will make this part slow.
        ;(declare (dynamic-extent ,values))
-       (match ,values ,@clauses))))
+       (match ,values ,@(mapcar (lambda (x)
+                                  (cons (cons 'list (car x)) (cdr x)))
+                                clauses)))))
 
 (defun intersperse (item list &optional (last-item item))
   (labels ((rec (rest acc)
