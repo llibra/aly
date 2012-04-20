@@ -16,9 +16,9 @@
 
 (defun bind (parser fn)
   (lambda (stream)
-    (result-match (funcall parser stream)
+    (ematch-values (funcall parser stream)
       ((t value1 stream1 _ msgs1)
-       (result-match (funcall (funcall fn value1) stream1)
+       (ematch-values (funcall (funcall fn value1) stream1)
          ((t value2 stream2 pos2 msgs2)
           (let ((msgs (if (eq stream1 stream2) (cons msgs1 msgs2) msgs2)))
             (success value2 stream2 pos2 msgs)))
@@ -35,7 +35,7 @@
       `(bind ,form (lambda (,var) ,@body))))
 
 (defmacro mlet* (bindings &body body)
-  (match bindings
+  (ematch bindings
     (() `(progn ,@body))
     ((cons (list var parser) rest)
      `(mlet1 ,var ,parser (mlet* ,rest ,@body)))))
@@ -64,7 +64,7 @@
 
 (defmacro seq/bind (&rest parsers)
   (flet ((<-p (<-) (string= <- "<-")))
-    (match parsers
+    (ematch parsers
       (() '(unit nil))
       ((guard (list (list _ <- parser)) (<-p <-)) parser)
       ((list parser) parser)
@@ -84,12 +84,12 @@
 
 (defun choice2 (parser1 parser2)
   (lambda (stream)
-    (result-match (funcall parser1 stream)
+    (ematch-values (funcall parser1 stream)
       ((t value stream pos msgs)
        (success value stream pos msgs))
       ((nil pos1 msgs1)
        (if (eq stream pos1)
-           (result-match (funcall parser2 pos1)
+           (ematch-values (funcall parser2 pos1)
              ((t value2 stream2 pos2 msgs2)
               (let ((msgs (if (eq pos1 stream2) (cons msgs1 msgs2) msgs2)))
                 (success value2 stream2 pos2 msgs)))
@@ -105,7 +105,7 @@
 
 (defun try (parser)
   (lambda (stream)
-    (result-match (funcall parser stream)
+    (ematch-values (funcall parser stream)
       ((t value stream pos msgs)
        (success value stream pos msgs))
       ((nil pos msgs)
@@ -115,7 +115,7 @@
 
 (defun expect (parser x)
   (lambda (stream0)
-    (result-match (funcall parser stream0)
+    (ematch-values (funcall parser stream0)
       ((t value stream pos msgs)
        (let ((msgs (if (eq stream0 stream) (list x) msgs)))
          (success value stream pos msgs)))
@@ -126,8 +126,8 @@
 ;; TODO: Treating a parser that accepts an empty string properly
 (defun many-common (accum-fn parser stream)
   (labels ((rec (stream0 accum)
-             (result-match (funcall parser stream0)
-               ((t value stream _ _)
+             (ematch-values (funcall parser stream0)
+               ((t value stream)
                 (rec stream (funcall accum-fn value accum)))
                ((nil pos msgs)
                 (if (eq stream0 pos)
@@ -137,7 +137,7 @@
 
 (defun many (parser)
   (lambda (stream)
-    (result-match (many-common #'cons parser stream)
+    (ematch-values (many-common #'cons parser stream)
       ((t value stream pos msgs)
        (success (nreverse value) stream pos msgs))
       ((nil pos msgs)
@@ -161,8 +161,8 @@
 
 (defun parse (parser input &key (parser-error-p t))
   (let ((stream (parser-stream input)))
-    (result-match (funcall parser stream)
-      ((t value _ _ _)
+    (ematch-values (funcall parser stream)
+      ((t value)
        (values value t))
       ((nil pos msgs)
        (if parser-error-p

@@ -9,17 +9,6 @@
        (setf (symbol-function ',name) ,function)
        ',name)))
 
-;;; TODO: Refactoring for speed
-(defmacro result-match (form &body clauses)
-  (with-gensyms (values)
-    `(let ((,values (multiple-value-list ,form)))
-       ;; The list is allocated in the heap for tail call optimization.
-       ;; But it will make this part slow.
-       ;(declare (dynamic-extent ,values))
-       (match ,values ,@(mapcar (lambda (x)
-                                  (cons (cons 'list (car x)) (cdr x)))
-                                clauses)))))
-
 (defun intersperse (item list &optional (last-item item))
   (labels ((rec (rest acc)
              (if rest

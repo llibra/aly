@@ -8,14 +8,14 @@
   (labels ((rec (stream1 index)
              (if (= index (length string))
                  (success nil stream1)
-                 (result-match
+                 (ematch-values
                      (funcall (specific-char (aref string index)) stream1)
                    ((t _ stream2 _ _)
                     (rec stream2 (1+ index)))
                    ((nil pos msgs)
                     (failure pos msgs))))))
     (lambda (stream)
-      (result-match (rec stream 0)
+      (ematch-values (rec stream 0)
         ((t _ stream pos msgs)
          (success string stream pos msgs))
         ((nil pos msgs)
