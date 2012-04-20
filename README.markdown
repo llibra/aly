@@ -28,7 +28,7 @@ Requirements
 
 * [Alexandria](http://common-lisp.net/project/alexandria/)
 * [Anaphora](http://common-lisp.net/project/anaphora/)
-* [fivepm](https://github.com/m2ym/fivepm)
+* [optima](https://github.com/m2ym/optima)
 
 Install
 -------

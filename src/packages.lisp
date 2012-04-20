@@ -19,7 +19,7 @@
 (defpackage :aly.core
   (:use :cl :aly.util :aly.stream :aly.condition)
   (:import-from :alexandria :with-gensyms :flatten)
-  (:import-from :5pm :match :ematch :ematch-values :guard)
+  (:import-from :optima :match :ematch :multiple-value-ematch :guard)
   (:export :success :failure :satisfy :unit :fail :bind :mlet1 :mlet* :seq :seq1
            :seqn :seq/bind :choice :try :expect :many :skip-many :eoi :parse))
 
@@ -41,7 +41,7 @@
 (defpackage :aly.char
   (:use :cl :aly.util :aly.core :aly.combinator)
   (:import-from :alexandria :curry :rcurry)
-  (:import-from :5pm :ematch-values)
+  (:import-from :optima :multiple-value-ematch)
   (:export :specific-char :specific-string :one-of :none-of :any-char :upper
            :lower :letter :alpha-num :digit :decimal-digit :hex-digit :oct-digit
            :newline :tab :whitespace :whitespaces))

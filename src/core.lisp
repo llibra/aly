@@ -16,9 +16,9 @@
 
 (defun bind (parser fn)
   (lambda (stream)
-    (ematch-values (funcall parser stream)
+    (multiple-value-ematch (funcall parser stream)
       ((t value1 stream1 _ msgs1)
-       (ematch-values (funcall (funcall fn value1) stream1)
+       (multiple-value-ematch (funcall (funcall fn value1) stream1)
          ((t value2 stream2 pos2 msgs2)
           (let ((msgs (if (eq stream1 stream2) (cons msgs1 msgs2) msgs2)))
             (success value2 stream2 pos2 msgs)))
@@ -84,12 +84,12 @@
 
 (defun choice2 (parser1 parser2)
   (lambda (stream)
-    (ematch-values (funcall parser1 stream)
+    (multiple-value-ematch (funcall parser1 stream)
       ((t value stream pos msgs)
        (success value stream pos msgs))
       ((nil pos1 msgs1)
        (if (eq stream pos1)
-           (ematch-values (funcall parser2 pos1)
+           (multiple-value-ematch (funcall parser2 pos1)
              ((t value2 stream2 pos2 msgs2)
               (let ((msgs (if (eq pos1 stream2) (cons msgs1 msgs2) msgs2)))
                 (success value2 stream2 pos2 msgs)))
@@ -105,7 +105,7 @@
 
 (defun try (parser)
   (lambda (stream)
-    (ematch-values (funcall parser stream)
+    (multiple-value-ematch (funcall parser stream)
       ((t value stream pos msgs)
        (success value stream pos msgs))
       ((nil pos msgs)
@@ -115,7 +115,7 @@
 
 (defun expect (parser x)
   (lambda (stream0)
-    (ematch-values (funcall parser stream0)
+    (multiple-value-ematch (funcall parser stream0)
       ((t value stream pos msgs)
        (let ((msgs (if (eq stream0 stream) (list x) msgs)))
          (success value stream pos msgs)))
@@ -126,7 +126,7 @@
 ;; TODO: Treating a parser that accepts an empty string properly
 (defun many-common (accum-fn parser stream)
   (labels ((rec (stream0 accum)
-             (ematch-values (funcall parser stream0)
+             (multiple-value-ematch (funcall parser stream0)
                ((t value stream)
                 (rec stream (funcall accum-fn value accum)))
                ((nil pos msgs)
@@ -137,7 +137,7 @@
 
 (defun many (parser)
   (lambda (stream)
-    (ematch-values (many-common #'cons parser stream)
+    (multiple-value-ematch (many-common #'cons parser stream)
       ((t value stream pos msgs)
        (success (nreverse value) stream pos msgs))
       ((nil pos msgs)
@@ -161,7 +161,7 @@
 
 (defun parse (parser input &key (parser-error-p t))
   (let ((stream (parser-stream input)))
-    (ematch-values (funcall parser stream)
+    (multiple-value-ematch (funcall parser stream)
       ((t value)
        (values value t))
       ((nil pos msgs)
